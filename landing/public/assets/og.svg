@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2de2e6"/>
+      <stop offset=".5" stop-color="#8a7dff"/>
+      <stop offset="1" stop-color="#ff3d7f"/>
+    </linearGradient>
+    <radialGradient id="r1" cx=".2" cy=".3" r=".5"><stop offset="0" stop-color="#2de2e6" stop-opacity=".25"/><stop offset="1" stop-color="#2de2e6" stop-opacity="0"/></radialGradient>
+    <radialGradient id="r2" cx=".85" cy=".25" r=".5"><stop offset="0" stop-color="#ff3d7f" stop-opacity=".25"/><stop offset="1" stop-color="#ff3d7f" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#08080d"/>
+  <rect width="1200" height="630" fill="url(#r1)"/>
+  <rect width="1200" height="630" fill="url(#r2)"/>
+  <g transform="translate(90 110)">
+    <rect width="84" height="84" rx="22" fill="#12121a" stroke="#ffffff" stroke-opacity=".12"/>
+    <path d="M26 31h24a10.5 10.5 0 0 1 0 21H32" fill="none" stroke="url(#g)" stroke-width="6.5" stroke-linecap="round" transform="translate(0 0)"/>
+    <path d="m35 44-8 8 8 8" fill="none" stroke="url(#g)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="110" y="56" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700" fill="#f1f1f6">Repost Cleaner</text>
+  </g>
+  <text x="90" y="330" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="800" fill="#f1f1f6" letter-spacing="-3">Deine TikTok-Reposts.</text>
+  <text x="90" y="420" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="800" fill="url(#g)" letter-spacing="-3">Aufgeräumt in Minuten.</text>
+  <text x="90" y="510" font-family="Inter, Arial, sans-serif" font-size="30" fill="#9494aa">100 % lokal · keine Passwortabfrage · Rate-Limit-Schutz</text>
+</svg>

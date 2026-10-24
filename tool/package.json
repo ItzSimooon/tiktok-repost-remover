@@ -1,0 +1,21 @@
+{
+  "name": "repost-cleaner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lokales Tool zum Verwalten und Entfernen der eigenen TikTok-Reposts – läuft ausschließlich auf deinem Rechner.",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "demo": "node src/server.js --demo",
+    "browser:install": "playwright install chromium",
+    "check": "node --check src/server.js && node --check public/app.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "playwright": "^1.56.0"
+  }
+}

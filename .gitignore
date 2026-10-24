@@ -1,0 +1,7 @@
+node_modules/
+tool/data/*
+!tool/data/.gitkeep
+landing/downloads/*
+!landing/downloads/.gitkeep
+*.log
+.DS_Store

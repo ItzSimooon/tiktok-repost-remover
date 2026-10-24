@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Repost Cleaner – TikTok-Reposts lokal & sicher aufräumen</title>
+  <meta name="description" content="Repost Cleaner ist ein kostenloses, lokales Tool, mit dem du deine eigenen TikTok-Reposts filterst und gezielt entfernst – ohne Passwortabfrage, mit eingebautem Rate-Limit-Schutz.">
+  <meta name="theme-color" content="#08080d">
+  <meta name="color-scheme" content="dark">
+  <link rel="canonical" href="https://tiktok.hyprnode.de/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://tiktok.hyprnode.de/">
+  <meta property="og:title" content="Repost Cleaner – TikTok-Reposts lokal & sicher aufräumen">
+  <meta property="og:description" content="Filtern, auswählen, entfernen. 100 % lokal, ohne Passwortabfrage, mit Rate-Limit-Schutz.">
+  <meta property="og:image" content="https://tiktok.hyprnode.de/assets/og.png">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Zum Inhalt springen</a>
+
+  <header class="nav" id="nav">
+    <div class="container nav-inner">
+      <a class="logo" href="/" aria-label="Repost Cleaner – Startseite">
+        <img src="/assets/favicon.svg" alt="" width="30" height="30">
+        <span>Repost Cleaner</span>
+      </a>
+      <nav class="nav-links" aria-label="Hauptnavigation">
+        <a href="#funktionen">Funktionen</a>
+        <a href="#ablauf">Ablauf</a>
+        <a href="#sicherheit">Sicherheit</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a class="btn btn-sm btn-primary" href="#download">Download</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ───────────── Hero ───────────── -->
+    <section class="hero">
+      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow"><i class="live-dot"></i>Kostenlos · läuft 100&nbsp;% lokal</span>
+          <h1>Deine TikTok-Reposts.<br><span class="grad">Aufgeräumt in Minuten.</span></h1>
+          <p class="lead">
+            Repost Cleaner zeigt alle deine Reposts übersichtlich an, filtert nach Datum, Creator und Stichwörtern –
+            und entfernt genau die, die du loswerden willst. Komplett auf deinem Rechner, ohne dass das Tool jemals dein Passwort sieht.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary btn-lg" href="#download">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
+              Kostenlos herunterladen
+            </a>
+            <a class="btn btn-ghost btn-lg" href="#ablauf">So funktioniert’s</a>
+          </div>
+          <ul class="trust">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Keine Passwortabfrage</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Kein Server dazwischen</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Rate-Limit-Schutz</li>
+          </ul>
+        </div>
+
+        <!-- App-Vorschau (reines HTML/CSS) -->
+        <div class="mock-wrap" aria-hidden="true">
+          <div class="mock">
+            <div class="mock-bar">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="mock-url">localhost:4321</span>
+            </div>
+            <div class="mock-body">
+              <div class="mock-side">
+                <div class="m-label">Filter</div>
+                <div class="m-input">#fyp -werbung</div>
+                <div class="m-chips"><span>7 Tage</span><span class="on">12 Monate</span><span>Älter</span></div>
+                <div class="m-label">Creator</div>
+                <div class="m-creator on"><i></i>@cookingwithmara<b>16</b></div>
+                <div class="m-creator on"><i></i>@techtom<b>15</b></div>
+                <div class="m-creator"><i></i>@berlin.food<b>18</b></div>
+                <div class="m-creator"><i></i>@dance.daily<b>12</b></div>
+              </div>
+              <div class="mock-main">
+                <div class="m-job">
+                  <div class="m-job-top"><b>Entferne Reposts</b><span>⏱ Nächster Schritt in <em id="mockCountdown">11</em> s</span></div>
+                  <div class="m-progress"><i></i></div>
+                </div>
+                <div class="m-grid">
+                  <div class="m-card c1 sel"><span class="m-check"></span><span class="m-badge ok">Entfernt</span></div>
+                  <div class="m-card c2 sel"><span class="m-check"></span><span class="m-badge run">Läuft …</span></div>
+                  <div class="m-card c3 sel"><span class="m-check"></span></div>
+                  <div class="m-card c4"><span class="m-check"></span></div>
+                  <div class="m-card c5 sel"><span class="m-check"></span></div>
+                  <div class="m-card c6"><span class="m-check"></span></div>
+                  <div class="m-card c7 sel"><span class="m-check"></span></div>
+                  <div class="m-card c8"><span class="m-check"></span></div>
+                </div>
+                <div class="m-action"><span><b>12</b> ausgewählt</span><i>Ausgewählte entfernen</i></div>
+              </div>
+            </div>
+          </div>
+          <div class="float float-a"><span class="lock">🔒</span><div><b>Login nur im eigenen Browser</b><small>Kein Passwortfeld im Tool</small></div></div>
+          <div class="float float-b"><b>8–18 s</b><small>variable Pause</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── Kennzahlen ───────────── -->
+    <section class="stats">
+      <div class="container stats-grid">
+        <div><b>0</b><span>Passwörter abgefragt</span></div>
+        <div><b>0</b><span>Server zwischen dir und TikTok</span></div>
+        <div><b>8–18&nbsp;s</b><span>zufällige Pause pro Aktion</span></div>
+        <div><b>100&nbsp;%</b><span>auf deinem Gerät</span></div>
+      </div>
+    </section>
+
+    <!-- ───────────── Funktionen ───────────── -->
+    <section class="section" id="funktionen">
+      <div class="container">
+        <header class="section-head reveal">
+          <span class="kicker">Funktionen</span>
+          <h2>Alles, was du zum Aufräumen brauchst.<br><span class="muted">Nichts, was du nicht willst.</span></h2>
+        </header>
+        <div class="features">
+          <article class="feature reveal">
+            <div class="ficon"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+            <h3>Sicherer, manueller Login</h3>
+            <p>Ein echtes Browserfenster öffnet sich auf deinem Rechner. Du loggst dich dort selbst ein – per QR-Code, E-Mail oder Telefon. Das Tool fragt keine Zugangsdaten ab.</p>
+          </article>
+          <article class="feature reveal">
+            <div class="ficon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></div>
+            <h3>Alle Reposts auf einen Blick</h3>
+            <p>Raster- oder Listenansicht mit Cover, Creator, Datum und Aufrufen. Bleibt auch bei tausenden Reposts flüssig.</p>
+          </article>
+          <article class="feature reveal">
+            <div class="ficon"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8.5V20l-4-2v-4.5z"/></svg></div>
+            <h3>Präzise Filter</h3>
+            <p>Stichwörter mit Ausschluss (<code>-werbung</code>), Zeitraum, Mehrfachauswahl von Creatorn, Status und Sortierung. Shift-Klick wählt ganze Bereiche.</p>
+          </article>
+          <article class="feature reveal">
+            <div class="ficon"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div>
+            <h3>Eingebauter Rate-Limit-Schutz</h3>
+            <p>Zufällig variierende Pausen, lange Erholungspausen, Limits pro Lauf und pro Tag, Backoff bei Fehlern und automatische Abkühlphasen.</p>
+          </article>
+          <article class="feature reveal">
+            <div class="ficon"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></div>
+            <h3>Volle Kontrolle</h3>
+            <p>Pausieren, fortsetzen, stoppen – jederzeit. Testlauf ohne echte Änderungen, Live-Protokoll und Fortschritt mit Countdown zur nächsten Aktion.</p>
+          </article>
+          <article class="feature reveal">
+            <div class="ficon"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></div>
+            <h3>Backup &amp; Export</h3>
+            <p>Sichere deine Reposts vor dem Löschen als JSON oder CSV – mit Link zu jedem Video. Eine lokale Historie zeigt, was wann entfernt wurde.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── Ablauf ───────────── -->
+    <section class="section section-alt" id="ablauf">
+      <div class="container">
+        <header class="section-head reveal">
+          <span class="kicker">Ablauf</span>
+          <h2>In vier Schritten zu einem aufgeräumten Profil.</h2>
+        </header>
+        <ol class="steps">
+          <li class="reveal">
+            <span class="step-num">01</span>
+            <h3>Herunterladen &amp; starten</h3>
+            <p>ZIP entpacken und das Startskript ausführen. Die Oberfläche öffnet sich automatisch unter <code>localhost</code>.</p>
+          </li>
+          <li class="reveal">
+            <span class="step-num">02</span>
+            <h3>Selbst einloggen</h3>
+            <p>Klick auf „Browser öffnen“. Im neuen Fenster meldest du dich ganz normal bei TikTok an. Der Login wird automatisch erkannt.</p>
+          </li>
+          <li class="reveal">
+            <span class="step-num">03</span>
+            <h3>Laden &amp; filtern</h3>
+            <p>Deine Reposts werden geladen. Grenze sie mit Filtern ein und wähle genau die aus, die weg sollen.</p>
+          </li>
+          <li class="reveal">
+            <span class="step-num">04</span>
+            <h3>Entspannt entfernen</h3>
+            <p>Das Tool arbeitet die Auswahl in ruhigem, menschlichem Tempo ab. Du kannst zusehen, pausieren oder einfach weitermachen.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ───────────── Sicherheit ───────────── -->
+    <section class="section" id="sicherheit">
+      <div class="container">
+        <header class="section-head reveal">
+          <span class="kicker">Sicherheit &amp; Datenschutz</span>
+          <h2>Deine Daten bleiben, wo sie hingehören:<br><span class="grad">bei dir.</span></h2>
+        </header>
+
+        <div class="arch reveal" role="img" aria-label="Architektur: Oberfläche, lokaler Dienst und Browserfenster laufen auf deinem Rechner. Nur das Browserfenster spricht direkt mit TikTok. Es gibt keinen fremden Server.">
+          <div class="arch-pc">
+            <span class="arch-label">Dein Rechner</span>
+            <div class="arch-nodes">
+              <div class="node"><b>Oberfläche</b><small>localhost im Browser</small></div>
+              <span class="link" aria-hidden="true"></span>
+              <div class="node"><b>Lokaler Dienst</b><small>nur 127.0.0.1</small></div>
+              <span class="link" aria-hidden="true"></span>
+              <div class="node node-hl"><b>Browserfenster</b><small>dein eigener Login</small></div>
+            </div>
+          </div>
+          <span class="link link-out" aria-hidden="true"></span>
+          <div class="arch-ext">
+            <div class="node"><b>TikTok</b><small>direkt, wie beim normalen Surfen</small></div>
+            <div class="node node-x"><b>Fremde Server</b><small>gibt es nicht</small></div>
+          </div>
+        </div>
+
+        <div class="compare">
+          <div class="compare-col yes reveal">
+            <h3>Was Repost Cleaner tut</h3>
+            <ul>
+              <li>Läuft ausschließlich auf <code>127.0.0.1</code> – aus dem Netzwerk nicht erreichbar</li>
+              <li>Prüft nur, <em>ob</em> du eingeloggt bist – nicht womit</li>
+              <li>Speichert Repost-Liste, Einstellungen und Historie lokal in <code>./data</code></li>
+              <li>Liest die Antworten, die TikTok deinem Browser ohnehin schickt</li>
+              <li>Liegt komplett als lesbarer Quellcode vor</li>
+            </ul>
+          </div>
+          <div class="compare-col no reveal">
+            <h3>Was es niemals tut</h3>
+            <ul>
+              <li>Passwörter, Codes oder Tokens abfragen oder speichern</li>
+              <li>Cookies auslesen, exportieren oder übertragen</li>
+              <li>Daten an hyprnode.de oder Dritte senden</li>
+              <li>Tracking, Analytics oder Werbung einbinden</li>
+              <li>Ohne deine Bestätigung irgendetwas löschen</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── Rate-Limit ───────────── -->
+    <section class="section section-alt" id="tempo">
+      <div class="container tempo">
+        <div class="tempo-copy reveal">
+          <span class="kicker">Rate-Limit-Schutz</span>
+          <h2>Langsam ist das neue Sicher.</h2>
+          <p class="lead">Massenaktionen im Sekundentakt fallen auf. Repost Cleaner arbeitet bewusst wie ein Mensch – unregelmäßig, mit Pausen, und hört auf, sobald TikTok bremst.</p>
+          <ul class="checklist">
+            <li><b>Variable Pausen</b> von 8–18 Sekunden, nie zweimal gleich</li>
+            <li><b>Lange Pausen</b> von 1,5–4 Minuten nach jeweils 8–15 Aktionen</li>
+            <li><b>Limits</b>: standardmäßig max. 150 pro Lauf und 300 pro Tag</li>
+            <li><b>Backoff</b> bei Fehlern, <b>Abkühlphase</b> bei Rate-Limit-Signalen</li>
+            <li><b>Captcha?</b> Das Tool pausiert, du löst es selbst im Fenster</li>
+          </ul>
+          <p class="fine">Hinweis: Keine Software kann garantieren, dass TikTok automatisierte Aktionen niemals beanstandet. Repost Cleaner ist deshalb konsequent auf Zurückhaltung ausgelegt – die Untergrenzen lassen sich nicht abschalten.</p>
+        </div>
+        <div class="timeline reveal" aria-hidden="true">
+          <div class="tl-head"><span>Aktivität</span><span>Zeit →</span></div>
+          <div class="tl-track" id="timeline"></div>
+          <div class="tl-legend"><span><i class="lg-act"></i>Aktion</span><span><i class="lg-gap"></i>zufällige Pause</span><span><i class="lg-break"></i>lange Pause</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── Download ───────────── -->
+    <section class="section" id="download">
+      <div class="container">
+        <div class="download reveal">
+          <div class="dl-main">
+            <span class="kicker">Download</span>
+            <h2>Hol dir Repost Cleaner.</h2>
+            <p class="lead">Kostenlos, ohne Konto, ohne Anmeldung. Läuft unter Windows, macOS und Linux.</p>
+            <a class="btn btn-primary btn-lg" id="dlButton" href="/download">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
+              <span id="dlLabel">ZIP herunterladen</span>
+            </a>
+            <p class="dl-meta" id="dlMeta">Version 1.0.0</p>
+            <div class="checksum" id="dlChecksum" hidden>
+              <span>SHA-256</span><code id="dlSha"></code>
+            </div>
+            <h3 class="req-title">Voraussetzungen</h3>
+            <ul class="req">
+              <li><b>Node.js 18</b> oder neuer (<a href="https://nodejs.org/de" rel="noopener" target="_blank">nodejs.org</a>)</li>
+              <li><b>Google Chrome</b> oder <b>Microsoft Edge</b> – alternativ das mitgelieferte Chromium</li>
+              <li>Windows 10+, macOS 12+ oder eine aktuelle Linux-Distribution</li>
+            </ul>
+          </div>
+          <div class="dl-install">
+            <div class="tabs" role="tablist" aria-label="Betriebssystem">
+              <button role="tab" aria-selected="true" data-os="win" id="tab-win">Windows</button>
+              <button role="tab" aria-selected="false" data-os="mac" id="tab-mac">macOS</button>
+              <button role="tab" aria-selected="false" data-os="linux" id="tab-linux">Linux</button>
+            </div>
+            <div class="tabpanel" data-panel="win" role="tabpanel" aria-labelledby="tab-win">
+              <p>ZIP entpacken und <b>start.bat</b> doppelklicken. Oder im Terminal:</p>
+              <pre><code>cd Downloads\repost-cleaner
+npm install
+npm start</code><button class="copy" type="button">Kopieren</button></pre>
+            </div>
+            <div class="tabpanel" data-panel="mac" role="tabpanel" aria-labelledby="tab-mac" hidden>
+              <p>ZIP entpacken und <b>start.command</b> doppelklicken (beim ersten Mal: Rechtsklick → Öffnen). Oder im Terminal:</p>
+              <pre><code>cd ~/Downloads/repost-cleaner
+npm install
+npm start</code><button class="copy" type="button">Kopieren</button></pre>
+            </div>
+            <div class="tabpanel" data-panel="linux" role="tabpanel" aria-labelledby="tab-linux" hidden>
+              <p>ZIP entpacken und im Terminal starten:</p>
+              <pre><code>cd ~/Downloads/repost-cleaner
+./start.sh        # oder: npm install && npm start</code><button class="copy" type="button">Kopieren</button></pre>
+            </div>
+            <div class="tip">
+              <b>Erst mal ausprobieren?</b> <code>npm run demo</code> startet die Oberfläche mit Beispieldaten – ganz ohne TikTok.
+            </div>
+            <div class="tip">
+              <b>Kein Chrome installiert?</b> <code>npm run browser:install</code> lädt ein passendes Chromium.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── FAQ ───────────── -->
+    <section class="section section-alt" id="faq">
+      <div class="container narrow">
+        <header class="section-head reveal">
+          <span class="kicker">FAQ</span>
+          <h2>Häufige Fragen</h2>
+        </header>
+        <div class="faq">
+          <details class="reveal">
+            <summary>Muss ich dem Tool mein Passwort geben?</summary>
+            <p>Nein. Repost Cleaner öffnet ein ganz normales Browserfenster, in dem du dich selbst bei TikTok anmeldest. Das Tool hat kein Eingabefeld für Zugangsdaten und prüft lediglich, ob eine Sitzung besteht.</p>
+          </details>
+          <details class="reveal">
+            <summary>Werden meine Daten irgendwohin geschickt?</summary>
+            <p>Nein. Alles läuft auf deinem Rechner. Der lokale Dienst ist nur unter <code>127.0.0.1</code> erreichbar, und die einzige Verbindung nach außen ist die deines Browsers zu TikTok – genau wie beim normalen Surfen. Diese Website hier erhält keinerlei Daten aus dem Tool.</p>
+          </details>
+          <details class="reveal">
+            <summary>Kann mein Account dadurch gesperrt werden?</summary>
+            <p>Ein Restrisiko lässt sich bei automatisierten Aktionen nie ganz ausschließen, und TikToks Nutzungsbedingungen schränken Automatisierung ein. Repost Cleaner minimiert das Risiko konsequent: variable Pausen, lange Pausen, Tageslimits, Abbruch bei Fehlerserien und eine Abkühlphase, sobald TikTok bremst. Wer ganz sicher gehen will, nutzt kleine Durchläufe über mehrere Tage.</p>
+          </details>
+          <details class="reveal">
+            <summary>Warum dauert das Entfernen so lange?</summary>
+            <p>Absichtlich. Hundert Reposts in einer Minute wären ein klares Bot-Signal. Mit den Standardwerten dauern 100 Reposts knapp eine Stunde – du kannst den Rechner in der Zeit ganz normal weiterbenutzen.</p>
+          </details>
+          <details class="reveal">
+            <summary>Funktioniert der Login per Google oder Apple?</summary>
+            <p>Am zuverlässigsten ist der Login per QR-Code mit der TikTok-App oder per E-Mail/Telefon. Manche Anbieter wie Google blockieren Logins in ferngesteuerten Browserfenstern. Mit „Login lokal merken“ musst du dich nur einmal anmelden.</p>
+          </details>
+          <details class="reveal">
+            <summary>Kann ich entfernte Reposts wiederherstellen?</summary>
+            <p>Nicht automatisch. Exportiere deshalb vor dem Löschen ein Backup – die JSON- und CSV-Dateien enthalten Links zu jedem Video, sodass du einzelne Reposts bei Bedarf wieder setzen kannst.</p>
+          </details>
+          <details class="reveal">
+            <summary>Was passiert, wenn TikTok seine Website ändert?</summary>
+            <p>Alle Stellen, die von TikToks Oberfläche abhängen, liegen gebündelt in einer Datei (<code>src/selectors.js</code>). Erkennt das Tool ein Bedienelement nicht, bricht es sicher ab statt blind zu klicken – und Updates gibt es hier zum Download.</p>
+          </details>
+          <details class="reveal">
+            <summary>Ist das ein offizielles TikTok-Produkt?</summary>
+            <p>Nein. Repost Cleaner ist ein unabhängiges Projekt und steht in keiner Verbindung zu TikTok oder ByteDance.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="container final-inner reveal">
+        <h2>Bereit für ein aufgeräumtes Profil?</h2>
+        <p>Download, einloggen, filtern – fertig. Dein Passwort bleibt, wo es hingehört.</p>
+        <a class="btn btn-primary btn-lg" href="#download">Jetzt herunterladen</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <a class="logo" href="/"><img src="/assets/favicon.svg" alt="" width="26" height="26"><span>Repost Cleaner</span></a>
+        <p>Ein Projekt auf hyprnode.de. Kein offizielles Produkt von TikTok oder ByteDance. „TikTok“ ist eine Marke der ByteDance Ltd.</p>
+      </div>
+      <nav class="footer-links" aria-label="Rechtliches">
+        <a href="/impressum">Impressum</a>
+        <a href="/datenschutz">Datenschutz</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

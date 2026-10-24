@@ -1,0 +1,24 @@
+{
+  "name": "repost-cleaner-landing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Landingpage für tiktok.hyprnode.de – erklärt das lokale Tool und bietet es zum Download an.",
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build:download": "node scripts/build-download.js"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.2.5",
+    "compression": "^1.8.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1"
+  }
+}

@@ -1,0 +1,27 @@
+# /etc/systemd/system/repost-cleaner-landing.service
+# sudo systemctl daemon-reload && sudo systemctl enable --now repost-cleaner-landing
+
+[Unit]
+Description=Repost Cleaner Landingpage (tiktok.hyprnode.de)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/repost-cleaner/landing
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+
+# Härtung
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/var/www/repost-cleaner
+
+[Install]
+WantedBy=multi-user.target
