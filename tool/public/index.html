@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="rc-token" content="__TOKEN__">
+  <meta name="color-scheme" content="dark light">
+  <title>Repost Cleaner</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="/favicon.svg" alt="" width="28" height="28">
+      <span>Repost Cleaner</span>
+      <span class="pill pill-demo" id="demoPill" hidden>Demo</span>
+    </div>
+    <div class="status">
+      <span class="pill" id="pillBrowser"><i class="dot"></i><span>Browser geschlossen</span></span>
+      <span class="pill" id="pillLogin"><i class="dot"></i><span>Nicht eingeloggt</span></span>
+      <span class="pill pill-warn" id="pillCaptcha" hidden><i class="dot"></i><span>Captcha im Browser lösen</span></span>
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost icon" id="btnLog" title="Aktivitätsprotokoll" aria-label="Aktivitätsprotokoll">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><i class="badge-dot" id="logDot" hidden></i>
+      </button>
+      <button class="btn ghost icon" id="btnSettings" title="Einstellungen" aria-label="Einstellungen">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <section class="card steps">
+        <h2>Verbinden</h2>
+        <ol>
+          <li id="stepBrowser">
+            <span class="num">1</span>
+            <div class="step-body">
+              <strong>Browser öffnen</strong>
+              <small>Sichtbares Fenster auf deinem Rechner</small>
+            </div>
+            <button class="btn primary sm" id="btnBrowser">Öffnen</button>
+          </li>
+          <li id="stepLogin">
+            <span class="num">2</span>
+            <div class="step-body">
+              <strong>Bei TikTok einloggen</strong>
+              <small id="loginHint">Manuell im geöffneten Fenster – das Tool sieht dein Passwort nie.</small>
+            </div>
+          </li>
+          <li id="stepScan">
+            <span class="num">3</span>
+            <div class="step-body">
+              <strong>Reposts laden</strong>
+              <div class="inline-form">
+                <span class="at">@</span>
+                <input id="username" placeholder="benutzername" autocomplete="off" spellcheck="false" aria-label="TikTok-Benutzername">
+                <button class="btn primary sm" id="btnScan">Laden</button>
+              </div>
+              <small id="scanHint">Wird nach dem Login automatisch erkannt.</small>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="card filters">
+        <div class="card-head">
+          <h2>Filter</h2>
+          <button class="link" id="btnResetFilters">Zurücksetzen</button>
+        </div>
+
+        <label class="field">
+          <span>Stichwörter</span>
+          <input type="search" id="fKeyword" placeholder="z. B. #fyp tanzen -werbung" autocomplete="off">
+          <small>Mehrere Wörter = alle müssen passen · <code>-wort</code> schließt aus · <code>"genaue phrase"</code></small>
+        </label>
+
+        <div class="field">
+          <span>Zeitraum <em>(Veröffentlichung des Videos)</em></span>
+          <div class="chips" id="datePresets">
+            <button type="button" data-preset="7">7 Tage</button>
+            <button type="button" data-preset="30">30 Tage</button>
+            <button type="button" data-preset="365">12 Monate</button>
+            <button type="button" data-preset="older365">Älter als 1 Jahr</button>
+          </div>
+          <div class="date-row">
+            <input type="date" id="fFrom" aria-label="Von">
+            <span>bis</span>
+            <input type="date" id="fTo" aria-label="Bis">
+          </div>
+        </div>
+
+        <div class="field">
+          <span>Creator <em id="creatorSummary"></em></span>
+          <input type="search" id="fCreatorSearch" placeholder="Creator suchen …" autocomplete="off">
+          <div class="creator-list" id="creatorList" role="listbox" aria-multiselectable="true"></div>
+        </div>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Status</span>
+            <select id="fStatus">
+              <option value="all">Alle</option>
+              <option value="pending" selected>Offen</option>
+              <option value="removed">Entfernt</option>
+              <option value="failed">Fehler</option>
+              <option value="unverified">Unbestätigt</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Sortierung</span>
+            <select id="fSort">
+              <option value="newest">Neueste zuerst</option>
+              <option value="oldest">Älteste zuerst</option>
+              <option value="creator">Creator A–Z</option>
+              <option value="plays">Meiste Aufrufe</option>
+            </select>
+          </label>
+        </div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="job" id="jobPanel" hidden>
+        <div class="job-head">
+          <div>
+            <h2 id="jobTitle">Lauf aktiv</h2>
+            <p id="jobSub" class="muted"></p>
+          </div>
+          <div class="job-actions">
+            <button class="btn ghost sm" id="btnPause">Pausieren</button>
+            <button class="btn ghost sm" id="btnResume" hidden>Fortsetzen</button>
+            <button class="btn danger-ghost sm" id="btnStop">Stoppen</button>
+            <button class="btn ghost sm" id="btnJobClose" hidden>Schließen</button>
+          </div>
+        </div>
+        <div class="progress"><div class="progress-bar" id="jobBar"></div></div>
+        <div class="job-stats">
+          <span><b id="jsProcessed">0</b>/<b id="jsTotal">0</b> bearbeitet</span>
+          <span class="ok"><b id="jsRemoved">0</b> entfernt</span>
+          <span><b id="jsSkipped">0</b> übersprungen</span>
+          <span class="warn"><b id="jsUnverified">0</b> unbestätigt</span>
+          <span class="err"><b id="jsFailed">0</b> Fehler</span>
+          <span class="wait" id="jsWait"></span>
+        </div>
+      </section>
+
+      <div class="toolbar">
+        <div class="counts" id="counts">Noch keine Reposts geladen</div>
+        <div class="toolbar-actions">
+          <button class="btn ghost sm" id="btnSelectVisible">Alle sichtbaren auswählen</button>
+          <button class="btn ghost sm" id="btnClearSel">Auswahl aufheben</button>
+          <div class="seg" role="group" aria-label="Ansicht">
+            <button type="button" data-view="grid" class="active" title="Raster">▦</button>
+            <button type="button" data-view="list" title="Liste">☰</button>
+          </div>
+          <details class="menu">
+            <summary class="btn ghost sm">Export</summary>
+            <div class="menu-pop">
+              <button type="button" data-export="csv-filtered">Gefilterte als CSV</button>
+              <button type="button" data-export="json-all">Alle als JSON (Backup)</button>
+              <button type="button" data-export="csv-selected">Auswahl als CSV</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div id="grid" class="grid"></div>
+      <div id="empty" class="empty">
+        <div class="empty-art" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <h3>Bereit, wenn du es bist</h3>
+        <p>Öffne den Browser, logge dich bei TikTok ein und lade deine Reposts. Danach kannst du filtern, auswählen und gezielt entfernen.</p>
+      </div>
+      <div id="sentinel" aria-hidden="true"></div>
+    </main>
+  </div>
+
+  <div class="actionbar" id="actionBar" hidden>
+    <div class="actionbar-info">
+      <strong id="selCount">0</strong> ausgewählt
+      <span class="muted" id="selEta"></span>
+    </div>
+    <div class="actionbar-btns">
+      <button class="btn ghost" id="btnClearSel2">Abbrechen</button>
+      <button class="btn danger" id="btnRemove">Ausgewählte entfernen</button>
+    </div>
+  </div>
+
+  <aside class="drawer" id="logDrawer" aria-label="Aktivitätsprotokoll" hidden>
+    <div class="drawer-head">
+      <h2>Aktivität</h2>
+      <button class="btn ghost icon" id="btnLogClose" aria-label="Schließen">✕</button>
+    </div>
+    <ol class="log" id="logList"></ol>
+  </aside>
+
+  <dialog id="dlgSettings" class="dialog">
+    <form method="dialog" id="formSettings">
+      <h2>Einstellungen</h2>
+      <p class="muted">Die Pausen variieren bei jedem Vorgang zufällig innerhalb der Bereiche. Untergrenzen sind fest eingebaut und lassen sich nicht unterschreiten.</p>
+
+      <fieldset>
+        <legend>Tempo &amp; Pausen</legend>
+        <div class="grid2">
+          <label class="field"><span>Pause zwischen Vorgängen (s)</span>
+            <div class="range-pair"><input type="number" name="delayMinSec" min="4"><span>–</span><input type="number" name="delayMaxSec" min="6"></div></label>
+          <label class="field"><span>Lange Pause nach … Vorgängen</span>
+            <div class="range-pair"><input type="number" name="breakEveryMin" min="3"><span>–</span><input type="number" name="breakEveryMax" min="4"></div></label>
+          <label class="field"><span>Länge der langen Pause (s)</span>
+            <div class="range-pair"><input type="number" name="breakMinSec" min="30"><span>–</span><input type="number" name="breakMaxSec" min="45"></div></label>
+          <label class="field"><span>Abbruch nach Fehlern in Folge</span>
+            <input type="number" name="maxConsecutiveErrors" min="1" max="10"></label>
+          <label class="field"><span>Max. pro Durchlauf</span>
+            <input type="number" name="maxPerRun" min="1" max="500"></label>
+          <label class="field"><span>Max. pro 24 Stunden</span>
+            <input type="number" name="maxPerDay" min="1" max="1000"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Verhalten</legend>
+        <label class="check"><input type="checkbox" name="dryRun"><span><b>Testlauf (Dry Run)</b> – alles wird durchgespielt, aber nichts entfernt.</span></label>
+        <label class="field"><span>Methode</span>
+          <select name="removalStrategy">
+            <option value="auto">Automatisch (Oberfläche, sonst API-Fallback)</option>
+            <option value="ui">Nur Oberfläche (klickt wie ein Mensch)</option>
+            <option value="api">Nur API (dieselbe Anfrage wie die TikTok-Webseite)</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Sitzung</legend>
+        <label class="check"><input type="checkbox" name="keepSession"><span><b>Login lokal merken</b> – das Browser-Profil bleibt in <code>tool/data/browser-profile</code> auf deinem Rechner, damit du dich nicht jedes Mal neu einloggen musst.</span></label>
+        <button type="button" class="btn ghost sm" id="btnForget">Gespeichertes Browser-Profil löschen</button>
+      </fieldset>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn ghost" id="btnDefaults">Standardwerte</button>
+        <span class="spacer"></span>
+        <button value="cancel" class="btn ghost">Abbrechen</button>
+        <button value="save" class="btn primary" id="btnSaveSettings">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgConfirm" class="dialog narrow">
+    <form method="dialog">
+      <h2 id="confirmTitle">Reposts entfernen?</h2>
+      <div id="confirmBody"></div>
+      <div class="dialog-actions">
+        <button type="button" class="btn ghost" data-export="json-all">Vorher Backup exportieren</button>
+        <span class="spacer"></span>
+        <button value="cancel" class="btn ghost">Abbrechen</button>
+        <button value="ok" class="btn danger" id="btnConfirmGo">Jetzt starten</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+</body>
+</html>
