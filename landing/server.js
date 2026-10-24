@@ -11,7 +11,7 @@ import helmet from 'helmet';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(DIR, 'public');
 const DOWNLOADS = path.join(DIR, 'downloads');
-const FONTS = path.join(DIR, 'node_modules/@fontsource-variable/inter/files');
+const FONTS = path.join(DIR, 'node_modules/@fontsource-variable');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '127.0.0.1'; // hinter nginx; für Direktbetrieb HOST=0.0.0.0
@@ -30,6 +30,7 @@ app.use(
         scriptSrc: ["'self'"],
         styleSrc: ["'self'"],
         imgSrc: ["'self'", 'data:'],
+        mediaSrc: ["'self'"],
         fontSrc: ["'self'"],
         connectSrc: ["'self'"],
         objectSrc: ["'none'"],
@@ -50,7 +51,9 @@ app.use((_req, res, next) => {
 app.use(compression());
 
 // Schriften selbst hosten (DSGVO: keine Verbindung zu Google Fonts)
-app.use('/fonts', express.static(FONTS, { immutable: true, maxAge: '365d', fallthrough: false }));
+for (const family of ['figtree', 'league-spartan']) {
+  app.use(`/fonts/${family}`, express.static(path.join(FONTS, family, 'files'), { immutable: true, maxAge: '365d', fallthrough: false }));
+}
 
 async function latestBuild() {
   try {

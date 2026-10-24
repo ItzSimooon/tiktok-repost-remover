@@ -4,261 +4,328 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="rc-token" content="__TOKEN__">
-  <meta name="color-scheme" content="dark light">
+  <meta name="color-scheme" content="dark">
   <title>Repost Cleaner</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/figtree-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/app.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <img src="/favicon.svg" alt="" width="28" height="28">
-      <span>Repost Cleaner</span>
-      <span class="pill pill-demo" id="demoPill" hidden>Demo</span>
-    </div>
-    <div class="status">
-      <span class="pill" id="pillBrowser"><i class="dot"></i><span>Browser geschlossen</span></span>
-      <span class="pill" id="pillLogin"><i class="dot"></i><span>Nicht eingeloggt</span></span>
-      <span class="pill pill-warn" id="pillCaptcha" hidden><i class="dot"></i><span>Captcha im Browser lösen</span></span>
-    </div>
-    <div class="top-actions">
-      <button class="btn ghost icon" id="btnLog" title="Aktivitätsprotokoll" aria-label="Aktivitätsprotokoll">
-        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><i class="badge-dot" id="logDot" hidden></i>
-      </button>
-      <button class="btn ghost icon" id="btnSettings" title="Einstellungen" aria-label="Einstellungen">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-      </button>
+  <header class="bar">
+    <div class="col bar-in">
+      <a class="mark" href="#/" aria-label="Repost Cleaner – Reposts">
+        <img src="/favicon.svg" alt="" width="24" height="24">
+        <span>Repost Cleaner</span>
+        <span class="demo-tag" id="demoTag" hidden>Demo</span>
+      </a>
+      <nav class="nav" aria-label="Bereiche">
+        <a href="#/" data-route="reposts">Reposts</a>
+        <a href="#/protokoll" data-route="log">Protokoll <span class="nav-count num" id="navErrors" hidden></span></a>
+        <a href="#/einstellungen" data-route="settings">Einstellungen</a>
+      </nav>
+      <div class="conn" id="conn" aria-live="polite">
+        <span class="conn-dot" id="connDot"></span>
+        <span id="connText">Browser geschlossen</span>
+      </div>
+      <button class="btn ghost" id="btnBrowser" type="button">Browser öffnen</button>
     </div>
   </header>
 
-  <div class="layout">
-    <aside class="sidebar">
-      <section class="card steps">
-        <h2>Verbinden</h2>
-        <ol>
+  <main class="col">
+    <!-- ───────────── Reposts ───────────── -->
+    <section class="view" data-view="reposts" id="viewReposts">
+      <div class="title-row" id="titleRow">
+        <div class="title-text">
+          <h1>Reposts <span class="h1-count num" id="totalCount"></span></h1>
+          <p class="finding" id="finding">Öffne den Browser und logge dich bei TikTok ein, um deine Reposts zu laden.</p>
+        </div>
+        <div class="title-actions">
+          <span class="sel-info num" id="selInfo"></span>
+          <button class="btn ghost" id="btnClearSel" type="button" hidden>Auswahl aufheben</button>
+          <button class="btn primary" id="btnRemove" type="button" disabled>Auswahl entfernen</button>
+        </div>
+      </div>
+
+      <section class="setup panel" id="setup" aria-labelledby="setupTitle">
+        <div class="setup-head">
+          <h2 id="setupTitle">Verbinden</h2>
+          <div class="setup-meta">
+            <span class="num" id="setupMeta"></span>
+            <button class="btn ghost sm" id="btnRescan" type="button">Neu laden</button>
+          </div>
+          <div class="setup-progress">
+            <div class="track" aria-hidden="true"><i id="setupBar"></i></div>
+            <span class="num" id="setupText">0 von 3 erledigt</span>
+          </div>
+        </div>
+        <ol class="setup-steps">
           <li id="stepBrowser">
-            <span class="num">1</span>
+            <span class="step-state" aria-hidden="true"></span>
             <div class="step-body">
-              <strong>Browser öffnen</strong>
-              <small>Sichtbares Fenster auf deinem Rechner</small>
+              <h3>Browser öffnen</h3>
+              <p>Ein sichtbares Chrome- oder Edge-Fenster auf diesem Rechner.</p>
             </div>
-            <button class="btn primary sm" id="btnBrowser">Öffnen</button>
+            <button class="btn primary" id="btnBrowserStep" type="button">Browser öffnen</button>
           </li>
           <li id="stepLogin">
-            <span class="num">2</span>
+            <span class="step-state" aria-hidden="true"></span>
             <div class="step-body">
-              <strong>Bei TikTok einloggen</strong>
-              <small id="loginHint">Manuell im geöffneten Fenster – das Tool sieht dein Passwort nie.</small>
+              <h3>Bei TikTok einloggen</h3>
+              <p id="loginHint">Im geöffneten Fenster, am einfachsten per QR-Code. Das Tool sieht dein Passwort nie.</p>
             </div>
           </li>
           <li id="stepScan">
-            <span class="num">3</span>
+            <span class="step-state" aria-hidden="true"></span>
             <div class="step-body">
-              <strong>Reposts laden</strong>
-              <div class="inline-form">
-                <span class="at">@</span>
-                <input id="username" placeholder="benutzername" autocomplete="off" spellcheck="false" aria-label="TikTok-Benutzername">
-                <button class="btn primary sm" id="btnScan">Laden</button>
-              </div>
-              <small id="scanHint">Wird nach dem Login automatisch erkannt.</small>
+              <h3>Reposts laden</h3>
+              <p id="scanHint">Der Benutzername wird nach dem Login erkannt.</p>
+            </div>
+            <div class="joined">
+              <label class="sr" for="username">TikTok-Benutzername</label>
+              <span class="joined-prefix" aria-hidden="true">@</span>
+              <input id="username" placeholder="benutzername" autocomplete="off" spellcheck="false">
+              <button class="btn ghost" id="btnScan" type="button">Laden</button>
             </div>
           </li>
         </ol>
       </section>
 
-      <section class="card filters">
-        <div class="card-head">
-          <h2>Filter</h2>
-          <button class="link" id="btnResetFilters">Zurücksetzen</button>
-        </div>
-
-        <label class="field">
-          <span>Stichwörter</span>
-          <input type="search" id="fKeyword" placeholder="z. B. #fyp tanzen -werbung" autocomplete="off">
-          <small>Mehrere Wörter = alle müssen passen · <code>-wort</code> schließt aus · <code>"genaue phrase"</code></small>
-        </label>
-
-        <div class="field">
-          <span>Zeitraum <em>(Veröffentlichung des Videos)</em></span>
-          <div class="chips" id="datePresets">
-            <button type="button" data-preset="7">7 Tage</button>
-            <button type="button" data-preset="30">30 Tage</button>
-            <button type="button" data-preset="365">12 Monate</button>
-            <button type="button" data-preset="older365">Älter als 1 Jahr</button>
-          </div>
-          <div class="date-row">
-            <input type="date" id="fFrom" aria-label="Von">
-            <span>bis</span>
-            <input type="date" id="fTo" aria-label="Bis">
-          </div>
-        </div>
-
-        <div class="field">
-          <span>Creator <em id="creatorSummary"></em></span>
-          <input type="search" id="fCreatorSearch" placeholder="Creator suchen …" autocomplete="off">
-          <div class="creator-list" id="creatorList" role="listbox" aria-multiselectable="true"></div>
-        </div>
-
-        <div class="field-row">
-          <label class="field">
-            <span>Status</span>
-            <select id="fStatus">
-              <option value="all">Alle</option>
-              <option value="pending" selected>Offen</option>
-              <option value="removed">Entfernt</option>
-              <option value="failed">Fehler</option>
-              <option value="unverified">Unbestätigt</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Sortierung</span>
-            <select id="fSort">
-              <option value="newest">Neueste zuerst</option>
-              <option value="oldest">Älteste zuerst</option>
-              <option value="creator">Creator A–Z</option>
-              <option value="plays">Meiste Aufrufe</option>
-            </select>
-          </label>
-        </div>
-      </section>
-    </aside>
-
-    <main class="main">
-      <section class="job" id="jobPanel" hidden>
-        <div class="job-head">
+      <section class="run panel" id="runPanel" aria-labelledby="runTitle" hidden>
+        <div class="run-head">
           <div>
-            <h2 id="jobTitle">Lauf aktiv</h2>
-            <p id="jobSub" class="muted"></p>
+            <h2 id="runTitle">Lauf</h2>
+            <p class="run-sub" id="runSub"></p>
           </div>
-          <div class="job-actions">
-            <button class="btn ghost sm" id="btnPause">Pausieren</button>
-            <button class="btn ghost sm" id="btnResume" hidden>Fortsetzen</button>
-            <button class="btn danger-ghost sm" id="btnStop">Stoppen</button>
-            <button class="btn ghost sm" id="btnJobClose" hidden>Schließen</button>
+          <div class="run-actions">
+            <span class="run-wait num" id="runWait"></span>
+            <button class="btn ghost" id="btnPause" type="button">Pausieren</button>
+            <button class="btn ghost" id="btnResume" type="button" hidden>Fortsetzen</button>
+            <button class="btn ghost danger" id="btnStop" type="button">Stoppen</button>
+            <button class="btn ghost" id="btnRunClose" type="button" hidden>Schließen</button>
           </div>
         </div>
-        <div class="progress"><div class="progress-bar" id="jobBar"></div></div>
-        <div class="job-stats">
-          <span><b id="jsProcessed">0</b>/<b id="jsTotal">0</b> bearbeitet</span>
-          <span class="ok"><b id="jsRemoved">0</b> entfernt</span>
-          <span><b id="jsSkipped">0</b> übersprungen</span>
-          <span class="warn"><b id="jsUnverified">0</b> unbestätigt</span>
-          <span class="err"><b id="jsFailed">0</b> Fehler</span>
-          <span class="wait" id="jsWait"></span>
-        </div>
+        <dl class="run-figs">
+          <div class="fig-lead"><dt>Bearbeitet</dt><dd class="num"><span id="rfProcessed">0</span><span class="of"> von <span id="rfTotal">0</span></span></dd></div>
+          <div><dt>Entfernt</dt><dd class="num" id="rfRemoved">0</dd></div>
+          <div><dt>Übersprungen</dt><dd class="num" id="rfSkipped">0</dd></div>
+          <div><dt>Unbestätigt</dt><dd class="num" id="rfUnverified">0</dd></div>
+          <div><dt>Fehler</dt><dd class="num" id="rfFailed">0</dd></div>
+        </dl>
+        <div class="strip" id="strip" role="img" aria-label="Zeitleiste des Laufs"></div>
+        <div class="strip-legend" id="stripLegend"></div>
       </section>
 
-      <div class="toolbar">
-        <div class="counts" id="counts">Noch keine Reposts geladen</div>
-        <div class="toolbar-actions">
-          <button class="btn ghost sm" id="btnSelectVisible">Alle sichtbaren auswählen</button>
-          <button class="btn ghost sm" id="btnClearSel">Auswahl aufheben</button>
-          <div class="seg" role="group" aria-label="Ansicht">
-            <button type="button" data-view="grid" class="active" title="Raster">▦</button>
-            <button type="button" data-view="list" title="Liste">☰</button>
+      <div class="work" id="work">
+        <aside class="filters panel" id="filters" aria-labelledby="filtersTitle">
+          <div class="panel-head">
+            <h2 id="filtersTitle">Filter</h2>
+            <button class="link" id="btnResetFilters" type="button">Zurücksetzen</button>
           </div>
-          <details class="menu">
-            <summary class="btn ghost sm">Export</summary>
-            <div class="menu-pop">
-              <button type="button" data-export="csv-filtered">Gefilterte als CSV</button>
-              <button type="button" data-export="json-all">Alle als JSON (Backup)</button>
-              <button type="button" data-export="csv-selected">Auswahl als CSV</button>
+
+          <div class="field">
+            <label for="fKeyword">Stichwörter</label>
+            <input type="search" id="fKeyword" placeholder="#rezept -werbung" autocomplete="off">
+            <p class="hint">Alle Wörter müssen passen. <span class="kbd">-wort</span> schließt aus, <span class="kbd">"genaue phrase"</span> sucht wörtlich.</p>
+          </div>
+
+          <div class="field">
+            <span class="label" id="dateLabel">Veröffentlicht</span>
+            <div class="seg-chips" id="datePresets" role="group" aria-labelledby="dateLabel">
+              <button type="button" data-preset="30">30 Tage</button>
+              <button type="button" data-preset="365">12 Monate</button>
+              <button type="button" data-preset="older365">Älter als 1 Jahr</button>
             </div>
-          </details>
+            <div class="date-row">
+              <label for="fFrom">Von</label><input type="date" id="fFrom">
+              <label for="fTo">Bis</label><input type="date" id="fTo">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="fCreatorSearch">Creator <span class="label-meta num" id="creatorSummary"></span></label>
+            <input type="search" id="fCreatorSearch" placeholder="Creator suchen" autocomplete="off">
+            <div class="creator-list" id="creatorList" role="listbox" aria-multiselectable="true" aria-label="Creator"></div>
+          </div>
+
+          <div class="field-pair">
+            <div class="field">
+              <label for="fStatus">Status</label>
+              <select id="fStatus">
+                <option value="all">Alle</option>
+                <option value="pending" selected>Noch repostet</option>
+                <option value="removed">Entfernt</option>
+                <option value="failed">Fehler</option>
+                <option value="unverified">Unbestätigt</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="fSort">Sortierung</label>
+              <select id="fSort">
+                <option value="newest">Neueste zuerst</option>
+                <option value="oldest">Älteste zuerst</option>
+                <option value="creator">Creator A–Z</option>
+                <option value="plays">Meiste Aufrufe</option>
+              </select>
+            </div>
+          </div>
+        </aside>
+
+        <section class="results" aria-labelledby="resultsTitle">
+          <div class="results-bar">
+            <h2 class="results-title num" id="resultsTitle">Keine Reposts geladen</h2>
+            <div class="results-actions">
+              <button class="btn ghost sm" id="btnFilterToggle" type="button" aria-controls="filters" aria-expanded="false">Filter</button>
+              <button class="btn ghost sm" id="btnSelectVisible" type="button">Alle angezeigten auswählen</button>
+              <div class="seg" role="group" aria-label="Ansicht">
+                <button type="button" data-view-mode="grid" aria-pressed="true">Raster</button>
+                <button type="button" data-view-mode="list" aria-pressed="false">Liste</button>
+              </div>
+              <details class="menu">
+                <summary class="btn ghost sm">Export</summary>
+                <div class="menu-pop" role="menu">
+                  <button type="button" role="menuitem" data-export="json-all">Alle als JSON (Backup)</button>
+                  <button type="button" role="menuitem" data-export="csv-filtered">Angezeigte als CSV</button>
+                  <button type="button" role="menuitem" data-export="csv-selected">Auswahl als CSV</button>
+                </div>
+              </details>
+            </div>
+          </div>
+          <div class="grid" id="grid"></div>
+          <div class="empty" id="empty">
+            <p class="empty-title" id="emptyTitle">Noch keine Reposts geladen</p>
+            <p id="emptyText">Sobald du eingeloggt bist, lädt „Reposts laden“ die Liste aus deinem Profil. Bei einigen hundert Reposts dauert das etwa eine Minute.</p>
+          </div>
+          <div id="sentinel" aria-hidden="true"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ───────────── Protokoll ───────────── -->
+    <section class="view" data-view="log" id="viewLog" hidden>
+      <div class="title-row">
+        <div class="title-text">
+          <h1>Protokoll</h1>
+          <p class="finding" id="logFinding">Alles, was das Tool in dieser Sitzung getan hat. Die Lösch-Historie liegt zusätzlich in <span class="kbd">data/history.jsonl</span>.</p>
+        </div>
+        <div class="title-actions">
+          <div class="seg" role="group" aria-label="Einträge filtern">
+            <button type="button" data-log-filter="all" aria-pressed="true">Alle</button>
+            <button type="button" data-log-filter="removed" aria-pressed="false">Entfernt</button>
+            <button type="button" data-log-filter="problems" aria-pressed="false">Probleme</button>
+          </div>
         </div>
       </div>
-
-      <div id="grid" class="grid"></div>
-      <div id="empty" class="empty">
-        <div class="empty-art" aria-hidden="true">
-          <span></span><span></span><span></span>
-        </div>
-        <h3>Bereit, wenn du es bist</h3>
-        <p>Öffne den Browser, logge dich bei TikTok ein und lade deine Reposts. Danach kannst du filtern, auswählen und gezielt entfernen.</p>
+      <div class="panel log-panel">
+        <table class="log">
+          <thead><tr><th scope="col" class="t-time">Uhrzeit</th><th scope="col">Ereignis</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+        <p class="empty-row" id="logEmpty" hidden>Noch keine Einträge.</p>
       </div>
-      <div id="sentinel" aria-hidden="true"></div>
-    </main>
-  </div>
+    </section>
 
-  <div class="actionbar" id="actionBar" hidden>
-    <div class="actionbar-info">
-      <strong id="selCount">0</strong> ausgewählt
-      <span class="muted" id="selEta"></span>
-    </div>
-    <div class="actionbar-btns">
-      <button class="btn ghost" id="btnClearSel2">Abbrechen</button>
-      <button class="btn danger" id="btnRemove">Ausgewählte entfernen</button>
-    </div>
-  </div>
-
-  <aside class="drawer" id="logDrawer" aria-label="Aktivitätsprotokoll" hidden>
-    <div class="drawer-head">
-      <h2>Aktivität</h2>
-      <button class="btn ghost icon" id="btnLogClose" aria-label="Schließen">✕</button>
-    </div>
-    <ol class="log" id="logList"></ol>
-  </aside>
-
-  <dialog id="dlgSettings" class="dialog">
-    <form method="dialog" id="formSettings">
-      <h2>Einstellungen</h2>
-      <p class="muted">Die Pausen variieren bei jedem Vorgang zufällig innerhalb der Bereiche. Untergrenzen sind fest eingebaut und lassen sich nicht unterschreiten.</p>
-
-      <fieldset>
-        <legend>Tempo &amp; Pausen</legend>
-        <div class="grid2">
-          <label class="field"><span>Pause zwischen Vorgängen (s)</span>
-            <div class="range-pair"><input type="number" name="delayMinSec" min="4"><span>–</span><input type="number" name="delayMaxSec" min="6"></div></label>
-          <label class="field"><span>Lange Pause nach … Vorgängen</span>
-            <div class="range-pair"><input type="number" name="breakEveryMin" min="3"><span>–</span><input type="number" name="breakEveryMax" min="4"></div></label>
-          <label class="field"><span>Länge der langen Pause (s)</span>
-            <div class="range-pair"><input type="number" name="breakMinSec" min="30"><span>–</span><input type="number" name="breakMaxSec" min="45"></div></label>
-          <label class="field"><span>Abbruch nach Fehlern in Folge</span>
-            <input type="number" name="maxConsecutiveErrors" min="1" max="10"></label>
-          <label class="field"><span>Max. pro Durchlauf</span>
-            <input type="number" name="maxPerRun" min="1" max="500"></label>
-          <label class="field"><span>Max. pro 24 Stunden</span>
-            <input type="number" name="maxPerDay" min="1" max="1000"></label>
+    <!-- ───────────── Einstellungen ───────────── -->
+    <section class="view" data-view="settings" id="viewSettings" hidden>
+      <div class="title-row">
+        <div class="title-text">
+          <h1>Einstellungen</h1>
+          <p class="finding" id="settingsFinding">Änderungen werden sofort gespeichert und gelten ab dem nächsten Lauf.</p>
         </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Verhalten</legend>
-        <label class="check"><input type="checkbox" name="dryRun"><span><b>Testlauf (Dry Run)</b> – alles wird durchgespielt, aber nichts entfernt.</span></label>
-        <label class="field"><span>Methode</span>
-          <select name="removalStrategy">
-            <option value="auto">Automatisch (Oberfläche, sonst API-Fallback)</option>
-            <option value="ui">Nur Oberfläche (klickt wie ein Mensch)</option>
-            <option value="api">Nur API (dieselbe Anfrage wie die TikTok-Webseite)</option>
-          </select>
-        </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>Sitzung</legend>
-        <label class="check"><input type="checkbox" name="keepSession"><span><b>Login lokal merken</b> – das Browser-Profil bleibt in <code>tool/data/browser-profile</code> auf deinem Rechner, damit du dich nicht jedes Mal neu einloggen musst.</span></label>
-        <button type="button" class="btn ghost sm" id="btnForget">Gespeichertes Browser-Profil löschen</button>
-      </fieldset>
-
-      <div class="dialog-actions">
-        <button type="button" class="btn ghost" id="btnDefaults">Standardwerte</button>
-        <span class="spacer"></span>
-        <button value="cancel" class="btn ghost">Abbrechen</button>
-        <button value="save" class="btn primary" id="btnSaveSettings">Speichern</button>
+        <div class="title-actions"><span class="saved" id="savedStamp" aria-live="polite"></span></div>
       </div>
-    </form>
-  </dialog>
 
-  <dialog id="dlgConfirm" class="dialog narrow">
+      <form id="formSettings" class="settings" novalidate>
+        <section class="set-row">
+          <div class="set-label">
+            <h2>Tempo</h2>
+            <p>Zwischen zwei Vorgängen wartet das Tool eine zufällige Zeit aus dem Bereich, nach einigen Vorgängen folgt eine lange Pause. Unter 4 Sekunden geht es nicht.</p>
+            <p class="preview num" id="tempoPreview"></p>
+          </div>
+          <div class="set-panel">
+            <div class="set-grid">
+              <div class="field"><label for="sDelayMin">Pause von (Sekunden)</label><input class="num" type="number" id="sDelayMin" name="delayMinSec" min="4" max="600"></div>
+              <div class="field"><label for="sDelayMax">bis (Sekunden)</label><input class="num" type="number" id="sDelayMax" name="delayMaxSec" min="6" max="900"></div>
+              <div class="field"><label for="sBreakEveryMin">Lange Pause nach (Vorgängen)</label><input class="num" type="number" id="sBreakEveryMin" name="breakEveryMin" min="3" max="100"></div>
+              <div class="field"><label for="sBreakEveryMax">bis (Vorgängen)</label><input class="num" type="number" id="sBreakEveryMax" name="breakEveryMax" min="4" max="150"></div>
+              <div class="field"><label for="sBreakMin">Lange Pause von (Sekunden)</label><input class="num" type="number" id="sBreakMin" name="breakMinSec" min="30" max="3600"></div>
+              <div class="field"><label for="sBreakMax">bis (Sekunden)</label><input class="num" type="number" id="sBreakMax" name="breakMaxSec" min="45" max="7200"></div>
+            </div>
+            <button class="link" id="btnDefaults" type="button">Standardwerte wiederherstellen</button>
+          </div>
+        </section>
+
+        <section class="set-row">
+          <div class="set-label">
+            <h2>Grenzen</h2>
+            <p>Das Tageslimit wird aus der lokalen Historie der letzten 24 Stunden berechnet. Nach mehreren Fehlern in Folge stoppt der Lauf.</p>
+            <p class="preview num" id="limitPreview"></p>
+          </div>
+          <div class="set-panel">
+            <div class="set-grid three">
+              <div class="field"><label for="sMaxRun">Pro Lauf</label><input class="num" type="number" id="sMaxRun" name="maxPerRun" min="1" max="500"></div>
+              <div class="field"><label for="sMaxDay">Pro 24 Stunden</label><input class="num" type="number" id="sMaxDay" name="maxPerDay" min="1" max="1000"></div>
+              <div class="field"><label for="sErrors">Fehler in Folge</label><input class="num" type="number" id="sErrors" name="maxConsecutiveErrors" min="1" max="10"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="set-row">
+          <div class="set-label">
+            <h2>Verhalten</h2>
+            <p>Der Testlauf spielt alles durch, ohne etwas zu entfernen. Die Methode bestimmt, wie ein Repost entfernt wird.</p>
+          </div>
+          <div class="set-panel">
+            <div class="switch-row">
+              <div><label for="sDryRun" class="switch-title">Testlauf</label><p class="hint">Nichts wird entfernt. Ideal, um Auswahl und Tempo zu prüfen.</p></div>
+              <input type="checkbox" class="switch" id="sDryRun" name="dryRun">
+            </div>
+            <div class="field">
+              <label for="sStrategy">Methode</label>
+              <select id="sStrategy" name="removalStrategy">
+                <option value="auto">Automatisch: Oberfläche, sonst API</option>
+                <option value="ui">Nur Oberfläche (klickt wie ein Mensch)</option>
+                <option value="api">Nur API (dieselbe Anfrage wie die TikTok-Webseite)</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="set-row">
+          <div class="set-label">
+            <h2>Sitzung</h2>
+            <p>Mit gemerktem Login bleibt das Browser-Profil in <span class="kbd">tool/data/browser-profile</span> auf diesem Rechner. Es wird nie übertragen.</p>
+          </div>
+          <div class="set-panel">
+            <div class="switch-row">
+              <div><label for="sKeep" class="switch-title">Login lokal merken</label><p class="hint">Gilt ab dem nächsten Öffnen des Browsers.</p></div>
+              <input type="checkbox" class="switch" id="sKeep" name="keepSession">
+            </div>
+          </div>
+        </section>
+
+        <section class="set-row">
+          <div class="set-label">
+            <h2>Gespeichertes Profil</h2>
+            <p>Löscht das lokale Browser-Profil. Danach ist ein neuer Login nötig. Der Browser muss dafür geschlossen sein.</p>
+          </div>
+          <div class="set-panel">
+            <button class="btn ghost danger" id="btnForget" type="button">Browser-Profil löschen</button>
+          </div>
+        </section>
+      </form>
+    </section>
+  </main>
+
+  <dialog id="dlgConfirm" class="dialog">
     <form method="dialog">
       <h2 id="confirmTitle">Reposts entfernen?</h2>
       <div id="confirmBody"></div>
       <div class="dialog-actions">
-        <button type="button" class="btn ghost" data-export="json-all">Vorher Backup exportieren</button>
+        <button type="button" class="link" data-export="json-all">Vorher Backup exportieren</button>
         <span class="spacer"></span>
         <button value="cancel" class="btn ghost">Abbrechen</button>
-        <button value="ok" class="btn danger" id="btnConfirmGo">Jetzt starten</button>
+        <button value="ok" class="btn primary" id="btnConfirmGo">Lauf starten</button>
       </div>
     </form>
   </dialog>

@@ -4,22 +4,24 @@ import { randBetween, randInt, sleep } from './throttle.js';
 // Demo-Modus: gleiche Schnittstelle wie TikTokSession, aber ohne Browser und ohne Netzwerk.
 // Ideal, um die Oberfläche auszuprobieren:  npm run demo
 
+// Erfundene Beispiel-Accounts – keine echten Personen.
 const CREATORS = [
-  ['khaby.lame', 'Khaby'], ['cookingwithmara', 'Mara kocht'], ['techtom', 'Tech Tom'],
-  ['dance.daily', 'Dance Daily'], ['fitwithlena', 'Lena | Fitness'], ['berlin.food', 'Berlin Food'],
-  ['catcontent', 'Cat Content'], ['studytips.de', 'Study Tips'], ['travelwithjo', 'Jo reist'],
-  ['comedy.kai', 'Kai'], ['plantmom', 'Plant Mom'], ['carspotter', 'Car Spotter'],
-  ['memes.de', 'Memes DE'], ['djnova', 'DJ Nova'], ['lifehacks247', 'Lifehacks 24/7'],
+  ['mara.kocht', 'Mara kocht'], ['tom.tech.tipps', 'Tom'], ['tanzschule.nord', 'Tanzschule Nord'],
+  ['lena.trainiert', 'Lena'], ['imbiss.atlas', 'Imbiss-Atlas'], ['katerkarl', 'Kater Karl'],
+  ['lernen.mit.ben', 'Ben'], ['jo.unterwegs', 'Jo unterwegs'], ['kai.macht.witze', 'Kai'],
+  ['gruener.daumen', 'Grüner Daumen'], ['autos.am.sonntag', 'Autos am Sonntag'], ['meme.archiv', 'Meme-Archiv'],
+  ['nova.live', 'Nova'], ['haushaltstricks', 'Haushaltstricks'], ['oma.backt', 'Oma backt'],
 ];
 const TEXTS = [
-  'Das musst du gesehen haben 😂 #fyp #comedy', 'Pasta in 10 Minuten 🍝 #rezept #kochen #foryou',
-  'Neues iPhone Trick den keiner kennt #tech #tipps', 'Choreo zum neuen Song 🔥 #dance #trend',
-  'Ganzkörper-Workout ohne Geräte #fitness #workout', 'Bester Döner der Stadt? #berlin #food',
-  'Er wollte doch nur spielen 🐱 #katze #tiere', 'So lernst du doppelt so schnell #lernen #studium',
-  'Versteckter Strand in Portugal #travel #urlaub', 'POV: Montagmorgen #relatable #fyp',
-  'Monstera umtopfen leicht gemacht 🌱 #pflanzen', 'Dieses Auto ist unglaublich #cars #supercar',
-  'Wenn Mama fragt wer das war #meme #lustig', 'Live Set Ausschnitt 🎧 #techno #dj',
-  '3 Hacks für die Küche #lifehack #haushalt', 'Werbung | Mein Lieblingsprodukt #ad #anzeige',
+  'Das musst du gesehen haben #fyp #comedy', 'Pasta in 10 Minuten, nur drei Zutaten #rezept #kochen',
+  'Der Trick mit dem Sperrbildschirm, den keiner kennt #tech #tipps', 'Choreo zum neuen Song, Teil 2 #dance #trend',
+  '15 Minuten Ganzkörper ohne Geräte #fitness #workout', 'Bester Döner der Stadt? Ehrlicher Test #food #berlin',
+  'Er wollte doch nur spielen #katze #tiere', 'So lernst du für Klausuren in der Hälfte der Zeit #lernen #studium',
+  'Versteckter Strand an der Algarve #travel #urlaub', 'POV: Montagmorgen im Büro #relatable #fyp',
+  'Monstera umtopfen ohne Drama #pflanzen #diy', 'Sonntagsausfahrt mit dem 911er #cars #oldtimer',
+  'Wenn Mama fragt, wer das war #meme #lustig', 'Ausschnitt aus dem Set vom Samstag #techno #dj',
+  'Drei Hacks für eine saubere Küche #lifehack #haushalt', 'Werbung: mein Lieblingsprodukt für den Sommer #ad #werbung',
+  'Omas Apfelkuchen, das Originalrezept #backen #rezept', 'Kalt duschen, 30 Tage lang. Ergebnis #challenge',
 ];
 
 export class DemoSession {

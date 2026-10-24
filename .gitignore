@@ -5,3 +5,4 @@ landing/downloads/*
 !landing/downloads/.gitkeep
 *.log
 .DS_Store
+.taste-skill/

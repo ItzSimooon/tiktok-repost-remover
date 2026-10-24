@@ -17,6 +17,9 @@ Oder per Doppelklick: `start.bat` (Windows), `start.command` (macOS), `./start.s
 
 ## Ablauf
 
+Die Oberfläche hat drei Bereiche: **Reposts** (Einrichtung, Lauf mit Zeitleiste, Filter und Raster/Liste),
+**Protokoll** und **Einstellungen** (speichern sich sofort, mit Vorschau der Laufdauer).
+
 1. **Browser öffnen** – ein echtes, sichtbares Chrome-/Edge-Fenster startet.
 2. **Selbst einloggen** – am besten per QR-Code mit der TikTok-App. Der Login wird automatisch erkannt.
 3. **Reposts laden** – das Tool öffnet dein Profil, wechselt in den Reposts-Tab und scrollt gemächlich.
@@ -57,7 +60,7 @@ src/
   config.js     Standardwerte und Grenzen der Einstellungen
   store.js      Lokale JSON-Ablage
   demo.js       Demo-Sitzung ohne Browser
-public/         Weboberfläche (Vanilla JS, kein Build-Schritt)
+public/         Weboberfläche (Vanilla JS, kein Build-Schritt; Schriften lokal in public/fonts, OFL)
 ```
 
 ## Wenn TikTok seine Website ändert

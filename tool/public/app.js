@@ -4,6 +4,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const TOKEN = $('meta[name="rc-token"]').content;
 const PAGE = 120;
+const BUSY = ['running', 'paused', 'stopping'];
 
 const local = {
   get(key, fallback) {
@@ -24,11 +25,14 @@ const local = {
 };
 
 const DEFAULT_FILTERS = { keyword: '', from: '', to: '', preset: null, creators: [], creatorSearch: '', status: 'pending', sort: 'newest' };
+const DEFAULT_SETTINGS = {
+  delayMinSec: 8, delayMaxSec: 18, breakEveryMin: 8, breakEveryMax: 15, breakMinSec: 90, breakMaxSec: 240,
+  maxPerRun: 150, maxPerDay: 300, maxConsecutiveErrors: 3, removalStrategy: 'auto', dryRun: false, keepSession: false,
+};
 
 const S = {
   state: null,
   settings: null,
-  defaults: null,
   items: new Map(),
   selected: new Set(),
   filters: { ...DEFAULT_FILTERS, ...local.get('filters', {}) },
@@ -37,7 +41,10 @@ const S = {
   renderLimit: PAGE,
   lastClickIdx: null,
   currentId: null,
-  jobDismissedAt: null,
+  logs: [],
+  logFilter: 'all',
+  runDismissedAt: null,
+  timeline: { startedAt: null, marks: [], breaks: [] },
 };
 
 // ───────────────────────── Helfer ─────────────────────────
@@ -66,14 +73,16 @@ function toast(message, type = 'info') {
   el.className = `toast ${type}`;
   el.textContent = message;
   $('#toasts').append(el);
-  setTimeout(() => el.remove(), type === 'error' ? 7000 : 4000);
+  setTimeout(() => el.remove(), type === 'error' ? 7000 : 3500);
 }
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const nf = new Intl.NumberFormat('de-DE', { notation: 'compact', maximumFractionDigits: 1 });
-const fmtNum = (n) => nf.format(n || 0);
+const nfCompact = new Intl.NumberFormat('de-DE', { notation: 'compact', maximumFractionDigits: 1 });
+const nf = new Intl.NumberFormat('de-DE');
+const fmtNum = (n) => nfCompact.format(n || 0);
 const fmtDate = (sec) => (sec ? new Date(sec * 1000).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–');
+const fmtTime = (ms) => new Date(ms).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const fmtDur = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
 const fmtClock = (ms) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -81,14 +90,30 @@ const fmtClock = (ms) => {
 };
 function fmtEta(ms) {
   const min = Math.round(ms / 60000);
-  if (min < 1) return 'unter 1 Minute';
-  if (min < 60) return `ca. ${min} Min.`;
-  return `ca. ${Math.floor(min / 60)} Std. ${min % 60} Min.`;
+  if (min < 1) return 'unter einer Minute';
+  if (min < 60) return `etwa ${min} Minuten`;
+  const h = Math.floor(min / 60);
+  return `etwa ${h} Std. ${min % 60} Min.`;
 }
 const hueOf = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % 8;
 const toDateInput = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const plural = (n, one, many) => `${nf.format(n)} ${n === 1 ? one : many}`;
+const isBusy = () => BUSY.includes(S.state?.job.status);
 
 const STATUS_LABEL = { removed: 'Entfernt', failed: 'Fehler', unverified: 'Unbestätigt' };
+
+// ───────────────────────── Navigation ─────────────────────────
+
+const ROUTES = { '': 'reposts', protokoll: 'log', einstellungen: 'settings' };
+function route() {
+  const key = location.hash.replace(/^#\/?/, '');
+  const view = ROUTES[key] ?? 'reposts';
+  $$('.view').forEach((v) => (v.hidden = v.dataset.view !== view));
+  $$('.nav a').forEach((a) => (a.dataset.route === view ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+  if (view === 'settings') fillSettings();
+  if (view === 'log') renderLog();
+  window.scrollTo(0, 0);
+}
 
 // ───────────────────────── Filter ─────────────────────────
 
@@ -144,32 +169,40 @@ function refresh({ keepScroll = false } = {}) {
   renderGrid();
   renderCreators();
   renderCounts();
-  renderActionBar();
+  renderSelection();
 }
 
-// ───────────────────────── Rendering ─────────────────────────
+// ───────────────────────── Raster ─────────────────────────
+
+function coverCaption(desc) {
+  const text = desc.replace(/#[\p{L}\p{N}_]+/gu, '').replace(/\s+/g, ' ').trim();
+  return text || desc || 'Ohne Beschreibung';
+}
 
 function cardHtml(it) {
   const sel = S.selected.has(it.id) ? ' selected' : '';
   const working = S.currentId === it.id;
-  const badge = working
-    ? '<span class="badge working">Läuft …</span>'
-    : STATUS_LABEL[it.status] ? `<span class="badge ${it.status}">${STATUS_LABEL[it.status]}</span>` : '';
-  const initials = esc((it.author || '?').replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase());
+  const pill = working
+    ? '<span class="pill working">Wird entfernt</span>'
+    : STATUS_LABEL[it.status] ? `<span class="pill ${it.status}">${STATUS_LABEL[it.status]}</span>` : '';
   const img = it.cover ? `<img src="${esc(it.cover)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : '';
-  return `<article class="item st-${it.status}${sel}" data-id="${esc(it.id)}">
-    <div class="thumb"><div class="ph hue-${hueOf(it.author)}">${initials}</div>${img}
-      <span class="check" aria-hidden="true"></span>${badge}
-      ${it.duration ? `<span class="duration">${fmtDur(it.duration)}</span>` : ''}
-      <span class="plays-ov">▶ ${fmtNum(it.plays)}</span>
+  const date = fmtDate(it.createTime);
+  return `<article class="item st-${it.status}${sel}" data-id="${esc(it.id)}" aria-selected="${Boolean(sel)}">
+    <div class="cover cv${hueOf(it.author)}"><p class="cap">${esc(coverCaption(it.desc))}</p>${img}
+      <span class="scrim"></span><span class="check" aria-hidden="true"></span>${pill}
+      <span class="plays num">${fmtNum(it.plays)} Aufrufe</span>
+      ${it.duration ? `<span class="dur num">${fmtDur(it.duration)}</span>` : ''}
     </div>
     <div class="meta">
-      <div class="who">@${esc(it.author)} ${it.authorName ? `<span>· ${esc(it.authorName)}</span>` : ''}</div>
-      <p class="desc" title="${esc(it.desc)}">${esc(it.desc) || '<i>Keine Beschreibung</i>'}</p>
-      ${it.error && it.status !== 'removed' ? `<div class="err-msg">${esc(it.error)}</div>` : ''}
-      <div class="foot"><time>${fmtDate(it.createTime)}</time><span>▶ ${fmtNum(it.plays)}</span>
-        <a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer" title="Auf TikTok öffnen" data-stop>↗</a></div>
+      <span class="who">@${esc(it.author)}</span>
+      <p class="desc" title="${esc(it.desc)}">${esc(it.desc) || 'Ohne Beschreibung'}</p>
+      ${it.error && it.status !== 'removed' ? `<p class="err">${esc(it.error)}</p>` : ''}
+      <div class="foot num"><span>${date}</span><a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer" data-stop>Auf TikTok</a></div>
     </div>
+    <span class="l-date num">${date}</span>
+    <span class="l-plays num">${fmtNum(it.plays)}</span>
+    <span class="l-status">${pill}</span>
+    <a class="l-link" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer" data-stop aria-label="Auf TikTok öffnen">↗</a>
   </article>`;
 }
 
@@ -180,12 +213,12 @@ function renderGrid() {
   const empty = $('#empty');
   empty.hidden = S.visible.length > 0;
   if (S.items.size && !S.visible.length) {
-    empty.querySelector('h3').textContent = 'Keine Treffer';
-    empty.querySelector('p').textContent = 'Kein Repost passt zu den aktuellen Filtern. Passe die Filter an oder setze sie zurück.';
+    $('#emptyTitle').textContent = 'Kein Repost passt zu diesen Filtern';
+    $('#emptyText').textContent = 'Lockere die Filter oder setze sie zurück. Entfernte Reposts siehst du unter Status „Entfernt“.';
   } else if (!S.items.size) {
-    empty.querySelector('h3').textContent = 'Bereit, wenn du es bist';
-    empty.querySelector('p').textContent =
-      'Öffne den Browser, logge dich bei TikTok ein und lade deine Reposts. Danach kannst du filtern, auswählen und gezielt entfernen.';
+    $('#emptyTitle').textContent = S.state?.scan.running ? 'Reposts werden geladen' : 'Noch keine Reposts geladen';
+    $('#emptyText').textContent =
+      'Sobald du eingeloggt bist, lädt „Reposts laden“ die Liste aus deinem Profil. Bei einigen hundert Reposts dauert das etwa eine Minute.';
   }
 }
 
@@ -204,34 +237,59 @@ function updateCard(id) {
 
 function renderCreators() {
   const counts = new Map();
-  for (const it of S.items.values()) {
-    const c = counts.get(it.author) ?? { name: it.authorName, n: 0 };
-    c.n += 1;
-    counts.set(it.author, c);
-  }
+  for (const it of S.items.values()) counts.set(it.author, (counts.get(it.author) ?? 0) + 1);
   const active = new Set(S.filters.creators);
   const q = S.filters.creatorSearch.toLowerCase().replace(/^@/, '');
   const rows = [...counts.entries()]
-    .filter(([id, c]) => !q || id.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
-    .sort((a, b) => Number(active.has(b[0])) - Number(active.has(a[0])) || b[1].n - a[1].n || a[0].localeCompare(b[0]))
+    .filter(([id]) => !q || id.toLowerCase().includes(q))
+    .sort((a, b) => Number(active.has(b[0])) - Number(active.has(a[0])) || b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, 300);
-  $('#creatorList').innerHTML = rows
-    .map(
-      ([id, c]) => `<button type="button" class="creator${active.has(id) ? ' active' : ''}" data-creator="${esc(id)}" role="option" aria-selected="${active.has(id)}">
-        <span class="box"></span><span class="name">@${esc(id)}</span><span class="count">${c.n}</span></button>`,
-    )
-    .join('');
-  $('#creatorSummary').textContent = active.size ? `(${active.size} gewählt)` : counts.size ? `(${counts.size})` : '';
+  $('#creatorList').innerHTML = rows.length
+    ? rows
+      .map(
+        ([id, n]) => `<button type="button" class="creator" data-creator="${esc(id)}" role="option" aria-selected="${active.has(id)}">
+          <span class="box" aria-hidden="true"></span><span class="name">@${esc(id)}</span><span class="count num">${n}</span></button>`,
+      )
+      .join('')
+    : `<p class="creator-empty">${counts.size ? 'Kein Creator gefunden.' : 'Erscheint nach dem Laden.'}</p>`;
+  $('#creatorSummary').textContent = active.size ? `${active.size} gewählt` : counts.size ? `${counts.size}` : '';
+}
+
+// Die eine Erkenntnis unter dem Titel – aus den geladenen Daten berechnet.
+function renderFinding() {
+  const all = [...S.items.values()];
+  const st = S.state;
+  const el = $('#finding');
+  $('#totalCount').textContent = all.length ? nf.format(all.length) : '';
+  if (!all.length) {
+    el.textContent = st?.scan.running
+      ? `${nf.format(st.scan.found)} Reposts gefunden, Laden läuft.`
+      : st?.loggedIn
+        ? 'Eingeloggt. Lade jetzt deine Reposts.'
+        : 'Öffne den Browser und logge dich bei TikTok ein, um deine Reposts zu laden.';
+    return;
+  }
+  const open = all.filter((i) => i.status !== 'removed');
+  const yearAgo = Date.now() / 1000 - 365 * 86400;
+  const old = open.filter((i) => (i.createTime ?? 0) < yearAgo).length;
+  const counts = new Map();
+  for (const i of open) counts.set(i.author, (counts.get(i.author) ?? 0) + 1);
+  const [topName, topN] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+  const removed = all.length - open.length;
+  const parts = [`<b>${nf.format(open.length)}</b> noch repostet, von ${plural(counts.size, 'Creator', 'Creatorn')}`];
+  if (old) parts.push(`<b>${nf.format(old)}</b> davon älter als ein Jahr`);
+  let text = `${parts.join(', ')}.`;
+  if (topName && topN > 1) text += ` Am häufigsten: @${esc(topName)} mit ${nf.format(topN)}.`;
+  if (removed) text += ` ${nf.format(removed)} bereits entfernt.`;
+  el.innerHTML = text;
 }
 
 function renderCounts() {
   const total = S.items.size;
-  if (!total) {
-    $('#counts').textContent = S.state?.scan.running ? 'Lade Reposts …' : 'Noch keine Reposts geladen';
-    return;
-  }
-  const removed = [...S.items.values()].filter((i) => i.status === 'removed').length;
-  $('#counts').innerHTML = `<b>${S.visible.length}</b> von <b>${total}</b> Reposts angezeigt${removed ? ` · ${removed} entfernt` : ''}`;
+  $('#resultsTitle').innerHTML = total
+    ? `<b>${nf.format(S.visible.length)}</b> von ${nf.format(total)} angezeigt`
+    : S.state?.scan.running ? 'Wird geladen' : 'Keine Reposts geladen';
+  renderFinding();
 }
 
 function estimateMs(n) {
@@ -246,91 +304,112 @@ function estimateMs(n) {
   return (runN * action + (runN - 1) * delay + Math.floor((runN - 1) / every) * (brk - delay)) * 1000;
 }
 
-function renderActionBar() {
-  // Auswahl bereinigen: entfernte Reposts können nicht ausgewählt sein
+function renderSelection() {
   for (const id of S.selected) if (!S.items.has(id) || S.items.get(id).status === 'removed') S.selected.delete(id);
   const n = S.selected.size;
-  const jobActive = ['running', 'paused', 'stopping'].includes(S.state?.job.status);
-  $('#actionBar').hidden = n === 0 || jobActive;
-  $('#selCount').textContent = n;
-  const capped = S.settings && n > S.settings.maxPerRun ? ` · max. ${S.settings.maxPerRun} pro Lauf` : '';
-  $('#selEta').textContent = n ? `Dauer ${fmtEta(estimateMs(n))}${capped}` : '';
-  $('#btnRemove').textContent = S.settings?.dryRun ? 'Testlauf starten' : 'Ausgewählte entfernen';
+  const btn = $('#btnRemove');
+  btn.disabled = n === 0 || isBusy() || S.state?.scan.running;
+  btn.textContent = isBusy() ? 'Lauf läuft' : n ? `${S.settings?.dryRun ? 'Testlauf mit' : 'Entfernen:'} ${nf.format(n)}` : 'Auswahl entfernen';
+  $('#btnClearSel').hidden = n === 0;
+  $('#selInfo').textContent = n ? `Dauer ${fmtEta(estimateMs(n))}${S.settings && n > S.settings.maxPerRun ? `, max. ${S.settings.maxPerRun} pro Lauf` : ''}` : '';
 }
 
-function setPill(el, text, cls) {
-  el.className = `pill ${cls ?? ''}`;
-  el.querySelector('span').textContent = text;
-}
+// ───────────────────────── Verbindung & Einrichtung ─────────────────────────
 
 function renderState() {
   const st = S.state;
   if (!st) return;
-  $('#demoPill').hidden = !st.demo;
-  setPill($('#pillBrowser'), { open: 'Browser offen', starting: 'Browser startet …', closed: 'Browser geschlossen' }[st.browser], st.browser === 'open' ? 'on' : st.browser === 'starting' ? 'busy' : '');
-  setPill($('#pillLogin'), st.loggedIn ? `@${st.username ?? 'eingeloggt'}` : 'Nicht eingeloggt', st.loggedIn ? 'on' : '');
-  $('#pillCaptcha').hidden = !st.captcha;
-
+  $('#demoTag').hidden = !st.demo;
   const open = st.browser === 'open';
-  const btnBrowser = $('#btnBrowser');
-  btnBrowser.disabled = st.browser === 'starting';
-  btnBrowser.textContent = open ? 'Schließen' : st.browser === 'starting' ? 'Startet …' : 'Öffnen';
-  btnBrowser.className = `btn sm ${open ? 'ghost' : 'primary'}`;
+  const conn = $('#conn');
+  conn.className = `conn ${open && st.loggedIn ? 'on' : st.browser === 'starting' || (open && !st.loggedIn) ? 'busy' : ''}`;
+  $('#connText').textContent = st.captcha
+    ? 'Captcha im Browser lösen'
+    : !open ? (st.browser === 'starting' ? 'Browser startet' : 'Browser geschlossen')
+      : st.loggedIn ? `@${st.username ?? 'eingeloggt'}` : 'Warte auf Login';
 
-  $('#stepBrowser').className = open ? 'done' : 'current';
-  $('#stepLogin').className = st.loggedIn ? 'done' : open ? 'current' : '';
-  $('#stepScan').className = S.items.size && !st.scan.running ? 'done' : st.loggedIn ? 'current' : '';
+  for (const b of [$('#btnBrowser'), $('#btnBrowserStep')]) {
+    b.disabled = st.browser === 'starting';
+    b.textContent = open ? 'Browser schließen' : st.browser === 'starting' ? 'Startet …' : 'Browser öffnen';
+  }
+  $('#btnBrowserStep').className = `btn ${open ? 'ghost' : 'primary'}`;
+
+  const loaded = S.items.size > 0 && !st.scan.running;
+  const steps = [open, st.loggedIn, loaded];
+  const done = steps.filter(Boolean).length;
+  const current = steps.indexOf(false);
+  ['stepBrowser', 'stepLogin', 'stepScan'].forEach((id, i) => {
+    $(`#${id}`).className = steps[i] ? 'done' : i === current ? 'current' : '';
+  });
+  $('#setupBar').style.width = `${(done / 3) * 100}%`;
+  $('#setupText').textContent = `${done} von 3 erledigt`;
+  const setup = $('#setup');
+  setup.classList.toggle('compact', done === 3);
+  $('#setupTitle').textContent = done === 3 ? `Verbunden als @${st.username ?? '–'}` : 'Verbinden';
+  $('#setupMeta').textContent = S.scannedAt ? `${plural(S.items.size, 'Repost', 'Reposts')} geladen um ${fmtTime(S.scannedAt).slice(0, 5)}` : '';
+  $('#btnRescan').disabled = isBusy();
+
   $('#loginHint').textContent = st.loggedIn
-    ? `Eingeloggt${st.username ? ` als @${st.username}` : ''}.`
+    ? `Eingeloggt als @${st.username ?? '–'}.`
     : open
-      ? 'Jetzt im Browserfenster einloggen (z. B. per QR-Code). Wird automatisch erkannt.'
-      : 'Manuell im geöffneten Fenster – das Tool sieht dein Passwort nie.';
+      ? 'Jetzt im Browserfenster einloggen, am einfachsten per QR-Code. Der Login wird automatisch erkannt.'
+      : 'Im geöffneten Fenster, am einfachsten per QR-Code. Das Tool sieht dein Passwort nie.';
 
   const input = $('#username');
   if (st.username && document.activeElement !== input && !input.dataset.edited) input.value = st.username;
-
   const btnScan = $('#btnScan');
   btnScan.textContent = st.scan.running ? 'Stopp' : S.items.size ? 'Neu laden' : 'Laden';
-  btnScan.className = `btn sm ${st.scan.running ? 'danger-ghost' : 'primary'}`;
-  btnScan.disabled = !st.scan.running && (!st.loggedIn || ['running', 'paused', 'stopping'].includes(st.job.status));
+  btnScan.className = `btn ${st.scan.running ? 'ghost danger' : st.loggedIn && !S.items.size ? 'primary' : 'ghost'}`;
+  btnScan.disabled = !st.scan.running && (!st.loggedIn || isBusy());
   $('#scanHint').textContent = st.scan.running
-    ? `${st.scan.found} Reposts gefunden …`
-    : st.scan.message || (st.loggedIn ? 'Bereit.' : 'Wird nach dem Login automatisch erkannt.');
+    ? `${nf.format(st.scan.found)} gefunden, lädt weiter …`
+    : st.scan.message || (st.loggedIn ? 'Bereit. Prüfe den Benutzernamen und lade.' : 'Der Benutzername wird nach dem Login erkannt.');
 
-  renderJob();
-  renderActionBar();
+  renderRun();
+  renderSelection();
+  renderFinding();
 }
 
-function renderJob() {
+// ───────────────────────── Lauf: Zeitleiste ─────────────────────────
+
+function renderRun() {
   const j = S.state.job;
-  const show = j.status !== 'idle' && !(S.jobDismissedAt && S.jobDismissedAt === j.finishedAt);
-  $('#jobPanel').hidden = !show;
+  const show = j.status !== 'idle' && !(S.runDismissedAt && S.runDismissedAt === j.finishedAt);
+  $('#runPanel').hidden = !show;
   if (!show) return;
-  const active = ['running', 'paused', 'stopping'].includes(j.status);
+  const active = BUSY.includes(j.status);
   const titles = {
-    running: j.dryRun ? 'Testlauf läuft' : 'Entferne Reposts',
-    paused: 'Pausiert',
-    stopping: 'Wird beendet …',
-    finished: j.dryRun ? 'Testlauf abgeschlossen' : 'Fertig',
+    running: j.dryRun ? 'Testlauf läuft' : 'Lauf läuft',
+    paused: 'Lauf pausiert',
+    stopping: 'Lauf wird beendet',
+    finished: j.dryRun ? 'Testlauf abgeschlossen' : 'Lauf abgeschlossen',
     stopped: 'Lauf beendet',
   };
-  $('#jobTitle').textContent = titles[j.status] ?? '';
-  $('#jobSub').textContent =
+  $('#runTitle').textContent = titles[j.status] ?? 'Lauf';
+  $('#runSub').textContent =
     j.message && j.status !== 'running'
       ? j.message
       : j.current
-        ? `Aktuell: @${j.current.author} – ${j.current.desc || j.current.id}`
-        : '';
+        ? `Jetzt: @${j.current.author}, ${j.current.desc || j.current.id}`
+        : j.wait ? 'Wartet, damit TikTok kein Muster sieht.' : '';
   $('#btnPause').hidden = j.status !== 'running';
   $('#btnResume').hidden = j.status !== 'paused';
   $('#btnStop').hidden = !active;
   $('#btnStop').disabled = j.status === 'stopping';
-  $('#btnJobClose').hidden = active;
-  $('#jobBar').style.width = `${j.total ? (j.processed / j.total) * 100 : 0}%`;
-  for (const k of ['processed', 'total', 'removed', 'skipped', 'unverified', 'failed']) {
-    $(`#js${k[0].toUpperCase()}${k.slice(1)}`).textContent = j[k];
+  $('#btnRunClose').hidden = active;
+  $('#rfProcessed').textContent = nf.format(j.processed);
+  $('#rfTotal').textContent = nf.format(j.total);
+  $('#rfRemoved').textContent = nf.format(j.removed);
+  $('#rfSkipped').textContent = nf.format(j.skipped);
+  $('#rfUnverified').textContent = nf.format(j.unverified);
+  $('#rfFailed').textContent = nf.format(j.failed);
+
+  const tl = S.timeline;
+  if (j.startedAt && tl.startedAt !== j.startedAt) Object.assign(tl, { startedAt: j.startedAt, marks: [], breaks: [] });
+  if (j.wait && ['break', 'cooldown'].includes(j.wait.kind) && !tl.breaks.some((b) => b.until === j.wait.until)) {
+    tl.breaks.push({ from: j.wait.until - j.wait.ms, until: j.wait.until, kind: j.wait.kind });
   }
-  tickWait();
+  tickRun();
 
   const newCurrent = j.current?.id ?? null;
   if (newCurrent !== S.currentId) {
@@ -341,82 +420,112 @@ function renderJob() {
   }
 }
 
-function tickWait() {
+function drawStrip() {
+  const tl = S.timeline;
+  const strip = $('#strip');
+  if (!tl.startedAt) return;
+  const j = S.state.job;
+  const end = j.finishedAt ?? Date.now();
+  // Mindestens 3 Minuten sichtbar (im Demo-Modus mit beschleunigten Pausen: 25 Sekunden)
+  const span = Math.max(end - tl.startedAt, S.state.demo ? 25_000 : 180_000);
+  const x = (t) => `${((t - tl.startedAt) / span) * 100}%`;
+  const parts = [];
+  for (const b of tl.breaks) {
+    const w = ((Math.min(b.until, end) - b.from) / span) * 100;
+    parts.push(`<span class="brk" style-left="${x(b.from)}" style-width="${w}%">${b.kind === 'cooldown' ? 'Abkühlen' : 'Lange Pause'} ${fmtDur((b.until - b.from) / 1000)}</span>`);
+  }
+  for (const m of tl.marks) parts.push(`<span class="mk ${m.cls}" style-left="${x(m.t)}"></span>`);
+  if (!j.finishedAt) parts.push(`<span class="now" style-left="${x(end)}"></span>`);
+  strip.innerHTML = parts.join('');
+  // Positionen per CSSOM setzen (die CSP erlaubt keine Inline-Styles im Markup)
+  for (const el of strip.children) {
+    el.style.left = el.getAttribute('style-left');
+    if (el.hasAttribute('style-width')) el.style.width = el.getAttribute('style-width');
+  }
+  const mins = Math.round(span / 60000);
+  $('#stripLegend').innerHTML =
+    `<span><i></i>Entfernt</span><span><i class="failed"></i>Fehler</span><span><i class="brk"></i>Lange Pause</span><span class="num">Zeitachse: ${span < 120_000 ? `${Math.round(span / 1000)} s` : `${mins} Min.`} seit Start</span>`;
+}
+
+function tickRun() {
   const j = S.state?.job;
-  const el = $('#jsWait');
-  if (!j?.wait) {
-    el.textContent = '';
-    return;
-  }
-  const left = j.wait.until - Date.now();
-  const label = { delay: 'Nächster Schritt in', break: 'Lange Pause –', backoff: 'Warte nach Fehler –', cooldown: 'Abkühlphase –' }[j.wait.kind] ?? 'Warte';
-  el.textContent = `⏱ ${label} ${fmtClock(left)}`;
+  if (!j) return;
+  const el = $('#runWait');
+  if (j.wait) {
+    const label = { delay: 'Nächster in', break: 'Lange Pause, noch', backoff: 'Nach Fehler, noch', cooldown: 'Abkühlen, noch' }[j.wait.kind] ?? 'Noch';
+    el.textContent = `${label} ${fmtClock(j.wait.until - Date.now())}`;
+  } else el.textContent = '';
+  if (!$('#runPanel').hidden) drawStrip();
 }
-setInterval(tickWait, 500);
+setInterval(tickRun, 1000);
 
-// ───────────────────────── Log ─────────────────────────
+// ───────────────────────── Protokoll ─────────────────────────
 
-function addLog(entry, { initial = false } = {}) {
-  const li = document.createElement('li');
-  li.className = entry.level;
-  li.innerHTML = `<time>${new Date(entry.ts).toLocaleTimeString('de-DE')}</time><span class="lv"></span><span></span>`;
-  li.lastChild.textContent = entry.message;
-  const list = $('#logList');
-  list.prepend(li);
-  while (list.children.length > 400) list.lastChild.remove();
-  if (!initial && entry.level === 'error') {
-    if ($('#logDrawer').hidden) $('#logDot').hidden = false;
-    toast(entry.message, 'error');
-  }
+function addLog(entry) {
+  S.logs.push(entry);
+  if (S.logs.length > 600) S.logs.shift();
+  const errors = S.logs.filter((l) => l.level === 'error').length;
+  $('#navErrors').hidden = errors === 0;
+  $('#navErrors').textContent = errors;
 }
 
-// ───────────────────────── Live-Verbindung ─────────────────────────
+function renderLog() {
+  const f = S.logFilter;
+  const rows = S.logs.filter((l) =>
+    f === 'all' ? l.level !== 'debug' : f === 'removed' ? l.level === 'ok' && /Entfernt|Würde entfernen/.test(l.message) : ['warn', 'error'].includes(l.level),
+  );
+  $('#logBody').innerHTML = rows
+    .slice()
+    .reverse()
+    .map((l) => `<tr class="${l.level}"><td class="t-time">${fmtTime(l.ts)}</td><td>${esc(l.message)}</td></tr>`)
+    .join('');
+  $('#logEmpty').hidden = rows.length > 0;
+  const removed = S.logs.filter((l) => l.level === 'ok' && /^Entfernt:/.test(l.message)).length;
+  const errors = S.logs.filter((l) => l.level === 'error').length;
+  $('#logFinding').textContent = S.logs.length
+    ? `${plural(removed, 'Repost', 'Reposts')} entfernt und ${plural(errors, 'Fehler', 'Fehler')} in dieser Sitzung. Die Lösch-Historie liegt zusätzlich in data/history.jsonl.`
+    : 'Alles, was das Tool in dieser Sitzung tut, erscheint hier.';
+}
 
-function connect() {
-  const es = new EventSource('/api/events');
-  es.addEventListener('snapshot', (e) => {
-    const snap = JSON.parse(e.data);
-    S.state = snap.state;
-    S.settings = snap.settings;
-    S.items = new Map(snap.items.map((it) => [it.id, it]));
-    $('#logList').innerHTML = '';
-    snap.logs.forEach((l) => addLog(l, { initial: true }));
-    renderState();
-    refresh();
-  });
-  es.addEventListener('state', (e) => {
-    const prevScan = S.state?.scan.running;
-    S.state = JSON.parse(e.data);
-    renderState();
-    if (prevScan && !S.state.scan.running) refresh({ keepScroll: true });
-  });
-  es.addEventListener('settings', (e) => {
-    S.settings = JSON.parse(e.data);
-    renderActionBar();
-  });
-  es.addEventListener('log', (e) => addLog(JSON.parse(e.data)));
-  es.addEventListener('items-reset', (e) => {
-    const data = JSON.parse(e.data);
-    S.items = new Map((data.items ?? []).map((it) => [it.id, it]));
-    S.selected.clear();
-    refresh();
-  });
-  let appendTimer = null;
-  es.addEventListener('items-append', (e) => {
-    for (const it of JSON.parse(e.data).items) S.items.set(it.id, it);
-    clearTimeout(appendTimer);
-    appendTimer = setTimeout(() => refresh({ keepScroll: true }), 250);
-  });
-  es.addEventListener('item', (e) => {
-    const { id, status, error } = JSON.parse(e.data);
-    const it = S.items.get(id);
-    if (!it) return;
-    Object.assign(it, { status, error });
-    if (status === 'removed') S.selected.delete(id);
-    updateCard(id);
-    renderCounts();
-    renderActionBar();
-  });
+// ───────────────────────── Einstellungen ─────────────────────────
+
+function fillSettings() {
+  if (!S.settings) return;
+  const form = $('#formSettings');
+  for (const [k, v] of Object.entries(S.settings)) {
+    const input = form.elements[k];
+    if (!input || document.activeElement === input) continue;
+    if (input.type === 'checkbox') input.checked = v;
+    else input.value = v;
+  }
+  renderSettingsPreview();
+}
+
+function renderSettingsPreview() {
+  const s = S.settings;
+  if (!s) return;
+  $('#tempoPreview').textContent = `100 Reposts dauern damit ${fmtEta(estimateMs(Math.min(100, s.maxPerRun)))}${s.maxPerRun < 100 ? ` (Lauf endet nach ${s.maxPerRun})` : ''}.`;
+  $('#limitPreview').textContent = `Ein Lauf entfernt höchstens ${nf.format(Math.min(s.maxPerRun, s.maxPerDay))}, ein Tag höchstens ${nf.format(s.maxPerDay)}.`;
+}
+
+let saveTimer;
+function queueSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const form = $('#formSettings');
+    const body = {};
+    for (const el of form.elements) {
+      if (!el.name) continue;
+      body[el.name] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) : el.value;
+    }
+    const res = await run(() => api('/api/settings', body));
+    if (res) {
+      S.settings = res.settings;
+      fillSettings();
+      renderSelection();
+      $('#savedStamp').textContent = `Gespeichert um ${fmtTime(Date.now()).slice(0, 5)}`;
+    }
+  }, 450);
 }
 
 // ───────────────────────── Export ─────────────────────────
@@ -434,9 +543,10 @@ function exportItems(kind) {
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   const user = S.state?.username ?? 'tiktok';
   if (kind === 'json-all') {
+    if (!S.items.size) return toast('Noch nichts zu exportieren.', 'error');
     const data = { exportedAt: new Date().toISOString(), username: user, items: [...S.items.values()] };
     download(`reposts-${user}-${stamp}.json`, JSON.stringify(data, null, 2), 'application/json');
-    return toast(`${S.items.size} Reposts als JSON exportiert.`, 'ok');
+    return toast(`${plural(S.items.size, 'Repost', 'Reposts')} als JSON gesichert.`);
   }
   const list = kind === 'csv-selected' ? [...S.selected].map((id) => S.items.get(id)).filter(Boolean) : S.visible;
   if (!list.length) return toast('Nichts zu exportieren.', 'error');
@@ -448,36 +558,10 @@ function exportItems(kind) {
       .join(';'),
   );
   download(`reposts-${user}-${stamp}.csv`, `﻿${header.join(';')}\n${rows.join('\n')}`, 'text/csv;charset=utf-8');
-  toast(`${list.length} Reposts als CSV exportiert.`, 'ok');
+  toast(`${plural(list.length, 'Repost', 'Reposts')} als CSV exportiert.`);
 }
 
-// ───────────────────────── Dialoge ─────────────────────────
-
-function openSettings() {
-  const form = $('#formSettings');
-  for (const [k, v] of Object.entries(S.settings)) {
-    const input = form.elements[k];
-    if (!input) continue;
-    if (input.type === 'checkbox') input.checked = v;
-    else input.value = v;
-  }
-  $('#dlgSettings').showModal();
-}
-
-async function saveSettings() {
-  const form = $('#formSettings');
-  const body = {};
-  for (const el of form.elements) {
-    if (!el.name) continue;
-    body[el.name] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) : el.value;
-  }
-  const res = await run(() => api('/api/settings', body));
-  if (res) {
-    S.settings = res.settings;
-    renderActionBar();
-    toast('Einstellungen gespeichert.', 'ok');
-  }
-}
+// ───────────────────────── Bestätigung ─────────────────────────
 
 function openConfirm() {
   const ids = [...S.selected];
@@ -489,31 +573,93 @@ function openConfirm() {
     byCreator.set(a, (byCreator.get(a) ?? 0) + 1);
   }
   const top = [...byCreator.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([a, n]) => `@${esc(a)} (${n})`).join(', ');
-  const capped = ids.length > s.maxPerRun;
-  $('#confirmTitle').textContent = s.dryRun ? 'Testlauf starten?' : `${ids.length} Reposts entfernen?`;
+  const runN = Math.min(ids.length, s.maxPerRun);
+  $('#confirmTitle').textContent = s.dryRun ? `Testlauf mit ${nf.format(runN)} Reposts` : `${nf.format(runN)} Reposts entfernen?`;
   $('#confirmBody').innerHTML = `
-    ${s.dryRun ? '<p class="note info"><b>Testlauf aktiv:</b> Es wird nichts entfernt. Ideal, um Auswahl und Ablauf zu prüfen.</p>' : ''}
-    <div class="confirm-list"><dl>
-      <dt>Anzahl</dt><dd>${ids.length}${capped ? ` (in diesem Lauf: ${s.maxPerRun})` : ''}</dd>
+    <dl class="num">
+      <dt>Ausgewählt</dt><dd>${nf.format(ids.length)}${ids.length > runN ? `, davon ${nf.format(runN)} in diesem Lauf` : ''}</dd>
       <dt>Creator</dt><dd>${top}${byCreator.size > 3 ? ` und ${byCreator.size - 3} weitere` : ''}</dd>
-      <dt>Pausen</dt><dd>${s.delayMinSec}–${s.delayMaxSec} s, lange Pause alle ${s.breakEveryMin}–${s.breakEveryMax}</dd>
+      <dt>Pausen</dt><dd>${s.delayMinSec}–${s.delayMaxSec} s, lange Pause nach ${s.breakEveryMin}–${s.breakEveryMax}</dd>
       <dt>Dauer</dt><dd>${fmtEta(estimateMs(ids.length))}</dd>
-    </dl></div>
-    ${s.dryRun ? '' : '<p class="note">Das Browserfenster muss geöffnet bleiben. Entfernte Reposts lassen sich nicht automatisch wiederherstellen – das JSON-Backup enthält aber alle Links.</p>'}`;
+    </dl>
+    ${s.dryRun
+      ? '<p class="note">Testlauf: Es wird nichts entfernt.</p>'
+      : '<p class="note">Lass das Browserfenster offen. Entfernte Reposts kommen nicht automatisch zurück; das JSON-Backup enthält den Link zu jedem Video.</p>'}`;
   $('#dlgConfirm').showModal();
 }
 
 async function startRemoval() {
-  const ids = [...S.selected];
-  const res = await run(() => api('/api/remove', { ids }));
+  const res = await run(() => api('/api/remove', { ids: [...S.selected] }));
   if (res) {
-    S.jobDismissedAt = null;
-    toast(`${res.queued} Reposts in der Warteschlange.`, 'ok');
+    S.runDismissedAt = null;
+    toast(`${plural(res.queued, 'Repost', 'Reposts')} in der Warteschlange.`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
-// ───────────────────────── Events ─────────────────────────
+// ───────────────────────── Live-Verbindung ─────────────────────────
+
+function connect() {
+  const es = new EventSource('/api/events');
+  es.addEventListener('snapshot', (e) => {
+    const snap = JSON.parse(e.data);
+    S.state = snap.state;
+    S.settings = snap.settings;
+    S.items = new Map(snap.items.map((it) => [it.id, it]));
+    S.scannedAt = snap.scannedAt;
+    S.logs = [];
+    snap.logs.forEach(addLog);
+    renderState();
+    refresh();
+    route();
+  });
+  es.addEventListener('state', (e) => {
+    const wasScanning = S.state?.scan.running;
+    S.state = JSON.parse(e.data);
+    renderState();
+    if (wasScanning && !S.state.scan.running) {
+      S.scannedAt = Date.now();
+      refresh({ keepScroll: true });
+      renderState();
+    }
+  });
+  es.addEventListener('settings', (e) => {
+    S.settings = JSON.parse(e.data);
+    renderSelection();
+    if (!$('#viewSettings').hidden) fillSettings();
+  });
+  es.addEventListener('log', (e) => {
+    const entry = JSON.parse(e.data);
+    addLog(entry);
+    if (!$('#viewLog').hidden) renderLog();
+    if (entry.level === 'error') toast(entry.message, 'error');
+  });
+  es.addEventListener('items-reset', (e) => {
+    const data = JSON.parse(e.data);
+    S.items = new Map((data.items ?? []).map((it) => [it.id, it]));
+    S.selected.clear();
+    refresh();
+  });
+  let appendTimer = null;
+  es.addEventListener('items-append', (e) => {
+    for (const it of JSON.parse(e.data).items) S.items.set(it.id, it);
+    clearTimeout(appendTimer);
+    appendTimer = setTimeout(() => refresh({ keepScroll: true }), 250);
+  });
+  es.addEventListener('item', (e) => {
+    const { id, status, error } = JSON.parse(e.data);
+    const it = S.items.get(id);
+    S.timeline.marks.push({ t: Date.now(), cls: status === 'failed' ? 'failed' : status === 'removed' ? '' : 'soft' });
+    if (!it) return;
+    Object.assign(it, { status, error });
+    if (status === 'removed') S.selected.delete(id);
+    updateCard(id);
+    renderCounts();
+    renderSelection();
+  });
+}
+
+// ───────────────────────── Ereignisse ─────────────────────────
 
 function toggleSelect(id, value) {
   const it = S.items.get(id);
@@ -521,13 +667,18 @@ function toggleSelect(id, value) {
   const on = value ?? !S.selected.has(id);
   if (on) S.selected.add(id);
   else S.selected.delete(id);
-  $(`.item[data-id="${CSS.escape(id)}"]`)?.classList.toggle('selected', on);
+  const el = $(`.item[data-id="${CSS.escape(id)}"]`);
+  el?.classList.toggle('selected', on);
+  el?.setAttribute('aria-selected', String(on));
 }
 
 function bindEvents() {
-  $('#btnBrowser').addEventListener('click', () =>
-    run(() => api(S.state?.browser === 'open' ? '/api/browser/close' : '/api/browser/open')),
-  );
+  addEventListener('hashchange', route);
+  addEventListener('scroll', () => $('.bar').classList.toggle('scrolled', scrollY > 4), { passive: true });
+
+  const toggleBrowser = () => run(() => api(S.state?.browser === 'open' ? '/api/browser/close' : '/api/browser/open'));
+  $('#btnBrowser').addEventListener('click', toggleBrowser);
+  $('#btnBrowserStep').addEventListener('click', toggleBrowser);
 
   const input = $('#username');
   input.addEventListener('input', () => (input.dataset.edited = '1'));
@@ -537,6 +688,7 @@ function bindEvents() {
       await api('/api/scan', { username: input.value.trim().replace(/^@/, '') });
     });
   $('#btnScan').addEventListener('click', scan);
+  $('#btnRescan').addEventListener('click', scan);
   input.addEventListener('keydown', (e) => e.key === 'Enter' && scan());
 
   // Filter
@@ -546,7 +698,7 @@ function bindEvents() {
   $('#fTo').value = f.to;
   $('#fStatus').value = f.status;
   $('#fSort').value = f.sort;
-  const markPreset = () => $$('#datePresets button').forEach((b) => b.classList.toggle('active', b.dataset.preset === f.preset));
+  const markPreset = () => $$('#datePresets button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.preset === f.preset)));
   markPreset();
 
   let kwTimer;
@@ -616,8 +768,12 @@ function bindEvents() {
     saveFilters();
     refresh();
   });
+  $('#btnFilterToggle').addEventListener('click', (e) => {
+    const open = $('#filters').classList.toggle('open');
+    e.currentTarget.setAttribute('aria-expanded', String(open));
+  });
 
-  // Auswahl im Raster (Shift+Klick = Bereich)
+  // Auswahl (Shift+Klick = Bereich)
   const grid = $('#grid');
   grid.addEventListener('click', (e) => {
     if (e.target.closest('[data-stop]')) return;
@@ -633,11 +789,9 @@ function bindEvents() {
       toggleSelect(id);
     }
     S.lastClickIdx = idx;
-    renderActionBar();
+    renderSelection();
   });
-  // Defekte/abgelaufene Cover → Platzhalter darunter wird sichtbar
   grid.addEventListener('error', (e) => e.target.tagName === 'IMG' && e.target.remove(), true);
-
   new IntersectionObserver((entries) => entries[0].isIntersecting && appendMore(), { rootMargin: '800px' }).observe($('#sentinel'));
 
   $('#btnSelectVisible').addEventListener('click', () => {
@@ -648,26 +802,24 @@ function bindEvents() {
       n += 1;
     }
     renderGrid();
-    renderActionBar();
-    if (n) toast(`${n} Reposts ausgewählt.`);
+    renderSelection();
+    if (n) toast(`${plural(n, 'Repost', 'Reposts')} ausgewählt.`);
   });
-  const clearSel = () => {
+  $('#btnClearSel').addEventListener('click', () => {
     S.selected.clear();
     $$('.item.selected').forEach((el) => el.classList.remove('selected'));
-    renderActionBar();
-  };
-  $('#btnClearSel').addEventListener('click', clearSel);
-  $('#btnClearSel2').addEventListener('click', clearSel);
+    renderSelection();
+  });
 
-  $$('.seg button').forEach((b) =>
+  $$('[data-view-mode]').forEach((b) =>
     b.addEventListener('click', () => {
-      S.view = b.dataset.view;
+      S.view = b.dataset.viewMode;
       local.set('view', S.view);
-      $$('.seg button').forEach((x) => x.classList.toggle('active', x === b));
+      $$('[data-view-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
       $('#grid').classList.toggle('list', S.view === 'list');
     }),
   );
-  $$('.seg button').forEach((x) => x.classList.toggle('active', x.dataset.view === S.view));
+  $$('[data-view-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.viewMode === S.view)));
 
   document.addEventListener('click', (e) => {
     const kind = e.target.closest('[data-export]')?.dataset.export;
@@ -682,38 +834,41 @@ function bindEvents() {
   $('#btnPause').addEventListener('click', () => run(() => api('/api/job/pause')));
   $('#btnResume').addEventListener('click', () => run(() => api('/api/job/resume')));
   $('#btnStop').addEventListener('click', () => run(() => api('/api/job/stop')));
-  $('#btnJobClose').addEventListener('click', () => {
-    S.jobDismissedAt = S.state.job.finishedAt;
-    renderJob();
+  $('#btnRunClose').addEventListener('click', () => {
+    S.runDismissedAt = S.state.job.finishedAt;
+    renderRun();
   });
 
-  // Einstellungen
-  $('#btnSettings').addEventListener('click', openSettings);
-  $('#dlgSettings').addEventListener('close', () => $('#dlgSettings').returnValue === 'save' && saveSettings());
+  // Protokoll
+  $$('[data-log-filter]').forEach((b) =>
+    b.addEventListener('click', () => {
+      S.logFilter = b.dataset.logFilter;
+      $$('[data-log-filter]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      renderLog();
+    }),
+  );
+
+  // Einstellungen: jede Änderung speichert sich selbst
+  const form = $('#formSettings');
+  form.addEventListener('input', queueSave);
+  form.addEventListener('change', queueSave);
+  form.addEventListener('submit', (e) => e.preventDefault());
   $('#btnDefaults').addEventListener('click', () => {
-    const form = $('#formSettings');
-    const d = {
-      delayMinSec: 8, delayMaxSec: 18, breakEveryMin: 8, breakEveryMax: 15, breakMinSec: 90, breakMaxSec: 240,
-      maxPerRun: 150, maxPerDay: 300, maxConsecutiveErrors: 3, removalStrategy: 'auto',
-    };
-    for (const [k, v] of Object.entries(d)) form.elements[k].value = v;
+    for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
+      const el = form.elements[k];
+      if (!el) continue;
+      if (el.type === 'checkbox') el.checked = v;
+      else el.value = v;
+    }
+    queueSave();
   });
   $('#btnForget').addEventListener('click', async () => {
     const res = await run(() => api('/api/session/forget'));
-    if (res) toast('Gespeichertes Browser-Profil gelöscht.', 'ok');
+    if (res) toast('Gespeichertes Browser-Profil gelöscht.');
   });
-
-  // Log
-  $('#btnLog').addEventListener('click', () => {
-    $('#logDrawer').hidden = !$('#logDrawer').hidden;
-    $('#logDot').hidden = true;
-  });
-  $('#btnLogClose').addEventListener('click', () => ($('#logDrawer').hidden = true));
 
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
-    if (!$('#logDrawer').hidden) $('#logDrawer').hidden = true;
-    else clearSel();
+    if (e.key === 'Escape' && !document.querySelector('dialog[open]') && S.selected.size) $('#btnClearSel').click();
   });
 }
 
